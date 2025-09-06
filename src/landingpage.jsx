@@ -78,15 +78,13 @@ const LandingPage = () => {
             </div>
           </div>
 
-          <div className="hero-image">
-            <img src="data:image/svg+xml,%3Csvg ... %3C/svg%3E" alt="Disaster Relief" />
             <div className="stats-overlay">
               <div className="stat-item"><span className="stat-number">Fast</span><div className="stat-label">Response</div></div>
               <div className="stat-item"><span className="stat-number">Real-time</span><div className="stat-label">Matching</div></div>
               <div className="stat-item"><span className="stat-number">Secure</span><div className="stat-label">Platform</div></div>
               <div className="stat-item"><span className="stat-number">Reliable</span><div className="stat-label">Support</div></div>
             </div>
-          </div>
+         
         </div>
       </section>
 
