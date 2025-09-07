@@ -195,12 +195,7 @@ body {
   box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
 }
 
-/* Hero Image + Stats */
-.hero-image {
-  position: relative;
-  border-radius: 20px;
-  overflow: hidden;
-}
+
 
 .hero-image img {
   width: 100%;
@@ -209,17 +204,18 @@ body {
 }
 
 .stats-overlay {
-  position: absolute;
+  position: sticky;
   top: 50%;
-  right: 2rem;
+  right: 1rem;
   transform: translateY(-50%);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 3rem;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
+
 }
 
 .stat-item {
@@ -230,12 +226,20 @@ body {
   font-size: 1.8rem;
   font-weight: 700;
   color: #2196F3;
+  
 }
 
 .stat-label {
   font-size: 1rem;
   color: #666;
   margin-top: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .stats-overlay {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+  }
 }
 
 /* How it Works */
