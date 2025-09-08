@@ -10,29 +10,30 @@ body {
   line-height: 1.6;
   color: #333;
   overflow-x: hidden;
-  background: #f8f9ff;
+  background: #fdfaff;
 }
 
 /* Header */
 .header {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  padding: 1rem 0;
+  
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
+  
   z-index: 1000;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .nav-container {
   max-width: 1200px;
-  margin: 0 auto;
+  margin:0 auto;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   align-items: center;
-  padding: 0 2rem;
+ 
 }
 
 .logo {
@@ -62,26 +63,32 @@ body {
   list-style: none;
   gap: 2rem;
   align-items: center;
+
 }
 
 .nav-menu button {
-  background: none;
+
   border: none;
-  color: #666;
+  background: none;
   font-weight: 500;
   cursor: pointer;
   transition: color 0.3s ease;
   font-size: 1rem;
+  color: #076692;
+  font-family: Verdana, Geneva, Tahoma, sans-serif
+
+
 }
 
 .nav-menu button:hover {
   color: #2196F3;
+  
 }
 
 .nav-buttons {
   display: flex;
   gap: 1rem;
-  align-items: center;
+ 
 }
 
 .btn-dashboard {
@@ -123,7 +130,7 @@ body {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding-top: 80px;
+  padding-top: 150px;
 }
 
 .hero-container {
@@ -400,7 +407,7 @@ body {
 
 /* Footer */
 .footer {
-  background: linear-gradient(135deg, #1565C0, #0D47A1);
+  background: linear-gradient(135deg, #0d4b9d, #69a5ff);
   color: white;
   padding: 4rem 2rem;
 }
