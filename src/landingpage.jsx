@@ -2,18 +2,100 @@ import React, { useState, useEffect } from "react";
 import HelpRequestForm from "./HelpRequestForm";
 import VolunteerForm from "./VolunteerForm";
 import AdminSignInForm from "./AdminSignInForm";
+import ChatBox from "./ChatBox";
 import "./index.css";
 
+import { useVolunteers } from "./context/VolunteerContext";
+import { useRequests } from "./context/RequestsContext";
+
+
+const VolunteerDashboard = ({ onClose }) => {
+
+  const { volunteers } = useVolunteers();
+  const { requests } = useRequests();
+  const [nameSearch, setNameSearch] = useState('');
+  const [activeChat, setActiveChat] = useState(null);
+
+  const volunteer = volunteers.find(v => v.name.toLowerCase() === nameSearch.toLowerCase() && nameSearch.trim() !== '');
+  const assignments = volunteer ? requests.filter(req => req.assignedVolunteerId === volunteer.id && req.status !== 'Completed') : [];
+
+  return (
+    <div className="form-overlay">
+      <div className="form-container" style={{ width: '450px' }}>
+        <h2 style={{ color: '#4CAF50', textAlign: 'center' }}>Volunteer Status & Tasks</h2>
+        <label>
+          Enter Your Full Name:
+          <input
+            type="text"
+            value={nameSearch}
+            onChange={(e) => setNameSearch(e.target.value)}
+            placeholder="Enter your name (e.g., Jane Doe)"
+            style={{ marginTop: '0.3rem' }}
+          />
+        </label>
+        <div style={{ backgroundColor: '#f0f0f0', padding: '1rem', borderRadius: '8px', minHeight: '120px', marginTop: '1rem', color: '#333' }}>
+
+          {volunteer ? (
+            <div>
+              <p style={{ fontWeight: 'bold' }}>{volunteer.name} (Status: {volunteer.status})</p>
+              <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                Skills: **{volunteer.skills || 'N/A'}**
+              </p>
+
+              {assignments.length > 0 ? (
+                <div style={{ marginTop: '0.8rem' }}>
+                  <p style={{ color: '#4CAF50', fontWeight: '600' }}>✅ Assigned Tasks ({assignments.length}):</p>
+                  {assignments.map(req => (
+                    <div key={req.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Request ID {req.id} in {req.location}</span>
+                      <button
+                        onClick={() => setActiveChat({ requestId: req.id, senderName: volunteer.name })}
+                        className="btn-primary"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', background: '#2196F3' }}
+                      >
+                        Open Chat
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ marginTop: '0.8rem' }}>No active assignments found. Thank you for being available!</p>
+              )}
+            </div>
+          ) : (
+            <p style={{ marginTop: '0.5rem' }}>{nameSearch.trim() === '' ? 'Please enter your full name to check status.' : 'No registered volunteer found with that name.'}</p>
+          )}
+        </div>
+        <div className="form-actions" style={{ justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+          <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+
+
+      {activeChat && (
+        <ChatBox
+          requestId={activeChat.requestId}
+          participantName={activeChat.senderName}
+          onClose={() => setActiveChat(null)}
+          isVolunteerView={true}
+        />
+      )}
+    </div>
+  );
+};
+
+
+
 const LandingPage = () => {
-  const [currentSection, setCurrentSection] = useState("hero");
   const [showHelpForm, setShowHelpForm] = useState(false);
   const [showVolunteerForm, setShowVolunteerForm] = useState(false);
+  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [showVolunteerDashboard, setShowVolunteerDashboard] = useState(false);
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
-      setCurrentSection(id);
     }
   };
 
@@ -44,19 +126,19 @@ const LandingPage = () => {
       <header className="header">
         <nav className="nav-container">
           <div className="logo" onClick={() => scrollToSection("hero")}>
-            <div className="logo-icon">❤️</div> Disaster Relief Platform
+            <div className="logo-icon">❤️</div>ResQWave
           </div>
 
           <ul className="nav-menu">
             <li><button onClick={() => scrollToSection("hero")}>Home</button></li>
             <li><button onClick={() => scrollToSection("about")}>About</button></li>
             <li><button onClick={() => scrollToSection("how-it-works")}>How It Works</button></li>
-            <li><button onClick={() => setShowVolunteerForm(true)}>Volunteer</button></li>
+            <li><button onClick={() => setShowVolunteerDashboard(true)}>Volunteer Status</button></li>
             <li><button onClick={() => scrollToSection("contact")}>Contact</button></li>
           </ul>
 
           <div className="nav-buttons">
-            <button className="btn-dashboard">Admin Dashboard</button>
+            <button className="btn-dashboard" onClick={() => setShowAdminForm(true)}>Admin Dashboard</button>
             <button className="btn-help" onClick={() => setShowHelpForm(true)}>Get Help Now</button>
           </div>
         </nav>
@@ -78,13 +160,12 @@ const LandingPage = () => {
             </div>
           </div>
 
-            <div className="stats-overlay">
-              <div className="stat-item"><span className="stat-number">Fast</span><div className="stat-label">Response</div></div>
-              <div className="stat-item"><span className="stat-number">Real-time</span><div className="stat-label">Matching</div></div>
-              <div className="stat-item"><span className="stat-number">Secure</span><div className="stat-label">Platform</div></div>
-              <div className="stat-item"><span className="stat-number">Reliable</span><div className="stat-label">Support</div></div>
-            </div>
-         
+          <div className="stats-overlay">
+            <div className="stat-item"><span className="stat-number">Fast</span><div className="stat-label">Response</div></div>
+            <div className="stat-item"><span className="stat-number">Real-time</span><div className="stat-label">Matching</div></div>
+            <div className="stat-item"><span className="stat-number">Secure</span><div className="stat-label">Platform</div></div>
+            <div className="stat-item"><span className="stat-number">Reliable</span><div className="stat-label">Support</div></div>
+          </div>
         </div>
       </section>
 
@@ -162,6 +243,8 @@ const LandingPage = () => {
       {/* Forms */}
       {showHelpForm && <HelpRequestForm onClose={() => setShowHelpForm(false)} />}
       {showVolunteerForm && <VolunteerForm onClose={() => setShowVolunteerForm(false)} />}
+      {showAdminForm && <AdminSignInForm onClose={() => setShowAdminForm(false)} />}
+      {showVolunteerDashboard && <VolunteerDashboard onClose={() => setShowVolunteerDashboard(false)} />}
     </div>
   );
 };
