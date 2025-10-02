@@ -1,13 +1,16 @@
 import React, { useState } from "react";
+import { useVolunteers } from "./context/VolunteerContext";
 
-const VolunteerSignup = ({ onClose, volunteers, setVolunteers }) => {
+const VolunteerForm = ({ onClose }) => {
+  const { addVolunteer } = useVolunteers(); 
   const [formData, setFormData] = useState({ name:"", contact:"", skills:"" });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setVolunteers([...volunteers, { ...formData, id: Date.now() }]);
+    addVolunteer(formData); 
+    alert(`🤝 Thank you, ${formData.name}! You are now registered as an available volunteer.`);
     onClose();
   };
 
@@ -29,4 +32,4 @@ const VolunteerSignup = ({ onClose, volunteers, setVolunteers }) => {
   );
 };
 
-export default VolunteerSignup;
+export default VolunteerForm;

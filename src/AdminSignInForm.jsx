@@ -1,8 +1,17 @@
 import React, { useState } from "react";
-
 import "./index.css";
+import { useAuth } from "./context/AuthContext";
+
+
+const Shield = () => <span style={{ marginRight: '8px' }}>🛡️</span>;
+const X = () => <span style={{ fontSize: '1.2rem' }}>&times;</span>;
+const User = () => <span style={{ marginRight: '5px' }}>👤</span>;
+const Lock = () => <span style={{ marginRight: '5px' }}>🔒</span>;
+const EyeOff = () => <span>🙈</span>;
+const Eye = () => <span>👁️</span>;
 
 const AdminSignInForm = ({ onClose }) => {
+  const { loginAdmin } = useAuth();
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -10,7 +19,7 @@ const AdminSignInForm = ({ onClose }) => {
 
   const handleChange = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
-    setError(""); // Clear error when user types
+    setError("");
   };
 
   const handleSubmit = async (e) => {
@@ -18,15 +27,12 @@ const AdminSignInForm = ({ onClose }) => {
     setIsSubmitting(true);
     setError("");
 
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Replace with actual authentication logic
     if (credentials.username === "admin" && credentials.password === "admin123") {
-      alert("✅ Admin authentication successful!\nRedirecting to dashboard...");
-      setIsSubmitting(false);
+      loginAdmin();
+      alert("✅ Admin authentication successful! Redirecting to dashboard...");
       onClose();
-      // In a real app: window.location.href = "/admin-dashboard";
     } else {
       setError("Invalid username or password. Please try again.");
       setIsSubmitting(false);
@@ -34,44 +40,48 @@ const AdminSignInForm = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full transform transition-all animate-in">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-6 rounded-t-2xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Shield className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Admin Access</h2>
-                <p className="text-green-100 text-sm">Secure dashboard login</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+    <div className="form-overlay">
+      <div className="form-container" style={{ width: '380px', padding: '0' }}>
+
+        
+        <div style={{
+          background: 'linear-gradient(135deg, #4CAF50, #388E3C)',
+          color: 'white',
+          padding: '1.5rem',
+          borderRadius: '12px 12px 0 0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h2 style={{ color: 'white', margin: 0 }}>
+            <Shield /> Admin Access
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '1.5rem'
+            }}
+          >
+            {X()}
+          </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+     
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
           {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
-              <div className="flex items-center">
-                <X className="w-5 h-5 text-red-500 mr-3" />
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
+            <div style={{ backgroundColor: '#fee2e2', borderLeft: '4px solid #ef4444', padding: '0.75rem', borderRadius: '4px', color: '#dc2626', fontWeight: 'bold' }}>
+              {error}
             </div>
           )}
 
           <div>
-            <label className="flex items-center space-x-2 text-sm font-semibold text-gray-700 mb-2">
-              <User className="w-4 h-4" />
-              <span>Username</span>
+            <label style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.9rem' }}>
+              <User /> <span>Username</span>
             </label>
             <input
               type="text"
@@ -79,111 +89,75 @@ const AdminSignInForm = ({ onClose }) => {
               value={credentials.username}
               onChange={handleChange}
               placeholder="Enter admin username"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '8px' }}
               required
             />
           </div>
 
           <div>
-            <label className="flex items-center space-x-2 text-sm font-semibold text-gray-700 mb-2">
-              <Lock className="w-4 h-4" />
-              <span>Password</span>
+            <label style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.9rem' }}>
+              <Lock /> <span>Password</span>
             </label>
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
                 value={credentials.password}
                 onChange={handleChange}
                 placeholder="Enter admin password"
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ccc', borderRadius: '8px' }}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#666'
+                }}
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? <EyeOff /> : <Eye />}
               </button>
             </div>
           </div>
 
-          {/* Demo Credentials Notice */}
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
-            <div className="flex items-start">
-              <Shield className="w-5 h-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
-              <div>
-                <h4 className="text-sm font-semibold text-yellow-800">Demo Credentials</h4>
-                <p className="text-sm text-yellow-700 mt-1">
-                  Username: <code className="bg-yellow-200 px-1 rounded">admin</code><br />
-                  Password: <code className="bg-yellow-200 px-1 rounded">admin123</code>
-                </p>
-              </div>
-            </div>
+        
+          <div style={{ backgroundColor: '#fffbe6', borderLeft: '4px solid #fbbf24', padding: '0.75rem', borderRadius: '4px', fontSize: '0.9rem' }}>
+            <h4 style={{ color: '#92400e', fontWeight: 'bold', margin: 0 }}>Demo Credentials:</h4>
+            <p style={{ margin: '5px 0 0', color: '#92400e' }}>
+              Username: <code style={{ backgroundColor: '#fde68a', padding: '2px 4px', borderRadius: '4px' }}>admin</code><br />
+              Password: <code style={{ backgroundColor: '#fde68a', padding: '2px 4px', borderRadius: '4px' }}>admin123</code>
+            </p>
           </div>
 
-          {/* Security Features */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h4 className="text-sm font-semibold text-green-800 mb-2">Security Features</h4>
-            <ul className="text-sm text-green-700 space-y-1">
-              <li className="flex items-center">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-2"></div>
-                Two-factor authentication ready
-              </li>
-              <li className="flex items-center">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-2"></div>
-                Session timeout protection
-              </li>
-              <li className="flex items-center">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-2"></div>
-                Audit trail logging
-              </li>
-            </ul>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex space-x-3 pt-4">
+          <div className="form-actions" style={{ marginTop: '0.5rem', justifyContent: 'center', gap: '1rem' }}>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 bg-green-500 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-lg flex items-center justify-center space-x-2"
+              className="btn-primary"
+              style={{ flex: 1, padding: '0.75rem', background: isSubmitting ? '#ccc' : 'linear-gradient(135deg, #4CAF50, #388E3C)' }}
             >
-              {isSubmitting ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Authenticating...</span>
-                </>
-              ) : (
-                <>
-                  <Shield className="w-5 h-5" />
-                  <span>Sign In</span>
-                </>
-              )}
+              {isSubmitting ? 'Authenticating...' : 'Sign In'}
             </button>
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 disabled:opacity-50 transition-all"
+              className="btn-secondary"
+              style={{ flex: 1, padding: '0.75rem', background: '#ccc', color: '#333' }}
             >
               Cancel
             </button>
           </div>
 
-          {/* Footer Links */}
-          <div className="text-center pt-4 border-t border-gray-200 space-y-2">
-            <button
-              type="button"
-              className="text-sm text-green-600 hover:text-green-700 transition-colors"
-              onClick={() => alert("Password reset functionality would be implemented here")}
-            >
-              Forgot your password?
-            </button>
-            <p className="text-xs text-gray-500">
-              Secure admin access for disaster relief coordination
-            </p>
-          </div>
+
         </form>
       </div>
     </div>
