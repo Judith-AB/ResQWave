@@ -1,0 +1,13 @@
+{
+  "name": "resqwave",
+  "private": true,
+  "scripts": {
+    "install-all": "npm install --prefix frontend && npm install --prefix backend",
+    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
+    "start-frontend": "npm run dev --prefix frontend",
+    "start-backend": "npm run dev --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
