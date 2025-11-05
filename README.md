@@ -1,10 +1,10 @@
-# 🚑 ResQWave — Full Stack Disaster Response Platform
+#  ResQWave — Full Stack Disaster Response Platform
 
 This project is organized as a **monorepo** with separate frontend and backend folders.
 
 ---
 
-## 📁 Folder Structure
+## Folder Structure
 
 ResQWave/
 │
