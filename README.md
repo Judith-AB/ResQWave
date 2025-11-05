@@ -5,7 +5,7 @@ This project is organized as a **monorepo** with separate frontend and backend f
 ---
 
 ## Folder Structure
-
+```
 ResQWave/
 │
 ├── frontend/ → React + Vite (UI)
@@ -13,7 +13,7 @@ ResQWave/
 ├── package.json → Root file to run both servers
 ├── .gitignore
 └── README.md
-
+```
 
 ---
 
