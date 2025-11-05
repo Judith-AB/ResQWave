@@ -5,24 +5,27 @@ import AdminSignInForm from "./AdminSignInForm";
 import ChatBox from "./ChatBox";
 import "./index.css";
 
+// *** FIX: REQUIRED CONTEXT HOOK IMPORTS ***
 import { useVolunteers } from "./context/VolunteerContext";
 import { useRequests } from "./context/RequestsContext";
 
-
+// --- Volunteer Dashboard Component (The Volunteer Sign-In/Status Modal) ---
 const VolunteerDashboard = ({ onClose }) => {
-
+  // Hooks are now available due to imports above
   const { volunteers } = useVolunteers();
   const { requests } = useRequests();
   const [nameSearch, setNameSearch] = useState('');
   const [activeChat, setActiveChat] = useState(null);
 
+  // Find the volunteer by name
   const volunteer = volunteers.find(v => v.name.toLowerCase() === nameSearch.toLowerCase() && nameSearch.trim() !== '');
+  // Filter for active, uncompleted assignments
   const assignments = volunteer ? requests.filter(req => req.assignedVolunteerId === volunteer.id && req.status !== 'Completed') : [];
 
   return (
     <div className="form-overlay">
       <div className="form-container" style={{ width: '450px' }}>
-        <h2 style={{ color: '#4CAF50', textAlign: 'center' }}>Volunteer Status & Tasks</h2>
+        <h2 style={{ color: '#4CAF50', textAlign: 'center' }}>Volunteer Sign-In & Task Status</h2>
         <label>
           Enter Your Full Name:
           <input
@@ -71,7 +74,7 @@ const VolunteerDashboard = ({ onClose }) => {
         </div>
       </div>
 
-
+      {/* Render ChatBox when a chat is active */}
       {activeChat && (
         <ChatBox
           requestId={activeChat.requestId}
@@ -83,14 +86,14 @@ const VolunteerDashboard = ({ onClose }) => {
     </div>
   );
 };
-
+// --- END Volunteer Dashboard Component ---
 
 
 const LandingPage = () => {
   const [showHelpForm, setShowHelpForm] = useState(false);
   const [showVolunteerForm, setShowVolunteerForm] = useState(false);
   const [showAdminForm, setShowAdminForm] = useState(false);
-  const [showVolunteerDashboard, setShowVolunteerDashboard] = useState(false);
+  const [showVolunteerDashboard, setShowVolunteerDashboard] = useState(false); // State for Volunteer Sign-In modal
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -133,11 +136,23 @@ const LandingPage = () => {
             <li><button onClick={() => scrollToSection("hero")}>Home</button></li>
             <li><button onClick={() => scrollToSection("about")}>About</button></li>
             <li><button onClick={() => scrollToSection("how-it-works")}>How It Works</button></li>
-            <li><button onClick={() => setShowVolunteerDashboard(true)}>Volunteer Status</button></li>
+
             <li><button onClick={() => scrollToSection("contact")}>Contact</button></li>
           </ul>
 
           <div className="nav-buttons">
+            {/* NEW: Combined Volunteer Portal Button */}
+            <button
+              className="btn-dashboard btn-volunteer-portal"
+              onClick={() => {
+                // Default action: open the Volunteer Sign In/Status Dashboard
+                setShowVolunteerDashboard(true);
+                // Optional: You might add a prompt here to ask user if they want to Sign In or Sign Up
+              }}
+            >
+              Volunteer Portal
+            </button>
+
             <button className="btn-dashboard" onClick={() => setShowAdminForm(true)}>Admin Dashboard</button>
             <button className="btn-help" onClick={() => setShowHelpForm(true)}>Get Help Now</button>
           </div>
@@ -244,6 +259,7 @@ const LandingPage = () => {
       {showHelpForm && <HelpRequestForm onClose={() => setShowHelpForm(false)} />}
       {showVolunteerForm && <VolunteerForm onClose={() => setShowVolunteerForm(false)} />}
       {showAdminForm && <AdminSignInForm onClose={() => setShowAdminForm(false)} />}
+      {/* The Volunteer Sign-In/Status Modal */}
       {showVolunteerDashboard && <VolunteerDashboard onClose={() => setShowVolunteerDashboard(false)} />}
     </div>
   );
