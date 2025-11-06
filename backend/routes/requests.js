@@ -5,22 +5,25 @@ import prisma from '../src/client.js';
 
 const router = express.Router();
 
-// --- Urgency Score Calculation Logic (RULE-BASED PLACEHOLDER) ---
 const calculateUrgencyScore = (emergencyType) => {
     let score = 0;
 
     switch (emergencyType.toLowerCase()) {
         case 'medical':
         case 'rescue':
-            score = 9.5;
+            score = 9.5; // Highest initial priority
             break;
         case 'shelter':
         case 'transportation':
             score = 7.0;
             break;
         case 'food':
+        case 'water':
+        case 'flooding':
+        case 'missing':
             score = 5.5;
             break;
+        case 'electricity':
         case 'other':
         default:
             score = 3.0;
@@ -31,7 +34,6 @@ const calculateUrgencyScore = (emergencyType) => {
 };
 
 
-// --- POST /api/requests (Victim Submits Help Request) ---
 router.post('/', async (req, res) => {
     const { name, contact, location, emergencyType, details } = req.body;
 
@@ -40,8 +42,10 @@ router.post('/', async (req, res) => {
     }
 
     try {
+        // 1. Calculate the urgency score
         const urgencyScore = calculateUrgencyScore(emergencyType);
 
+        // 2. Save the request to the Request table
         const newRequest = await prisma.request.create({
             data: {
                 victimName: name,
@@ -54,7 +58,7 @@ router.post('/', async (req, res) => {
             }
         });
 
-        // Respond with data needed by the frontend modal
+        // 3. Respond with data needed by the frontend modal
         res.status(201).json({
             message: "Help request submitted successfully.",
             requestId: newRequest.id,
@@ -68,26 +72,20 @@ router.post('/', async (req, res) => {
 });
 
 
-// --- GET /api/requests/pending (Admin Dashboard Data) ---
 router.get('/pending', async (req, res) => {
     try {
-        // Fetch all active requests, ordered by urgency (highest first)
         const pendingRequests = await prisma.request.findMany({
             where: {
                 status: {
-                    in: ['Pending', 'Assigned', 'Atmost'] // Active requests
+                    in: ['Pending', 'Assigned', 'Atmost'] // Include all active states
                 }
             },
             orderBy: {
-                urgencyScore: 'desc', // Orders by Urgency Score
+                urgencyScore: 'desc', // MOST URGENT requests appear at the top
             },
-            // Include assignment details if needed
-            include: {
-                assignments: true,
-            }
         });
 
-        // Fetch all volunteers for display/assignment purposes
+        // 2. Fetch all volunteers for display/assignment purposes
         const volunteers = await prisma.user.findMany({
             where: { isVolunteer: true },
             select: {
@@ -95,10 +93,12 @@ router.get('/pending', async (req, res) => {
                 fullName: true,
                 contact: true,
                 skills: true,
-                isMedicalVerified: true
+                isMedicalVerified: true,
+                location: true,
             }
         });
 
+        // 3. Respond with both sets of data
         res.status(200).json({
             requests: pendingRequests,
             volunteers: volunteers
