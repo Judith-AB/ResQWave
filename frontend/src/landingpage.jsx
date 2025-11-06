@@ -5,13 +5,10 @@ import AdminSignInForm from "./AdminSignInForm";
 import ChatBox from "./ChatBox";
 import "./index.css";
 
-// *** REQUIRED CONTEXT HOOK IMPORTS ***
 import { useVolunteers } from "./context/VolunteerContext";
 import { useRequests } from "./context/RequestsContext";
 
 const API_BASE_URL = "http://localhost:3001/api/auth";
-
-// --- Volunteer Chooser Modal ---
 const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
   <div className="form-overlay">
     <div className="form-container" style={{ width: '350px', textAlign: 'center', padding: '2rem' }}>
@@ -79,12 +76,10 @@ const VolunteerDashboard = ({ onClose }) => {
       const data = await response.json();
 
       if (response.ok && data.isVolunteer) {
-        // Find the full user object from context (since it only uses name for display now)
         const matchedVolunteer = volunteers.find(v => v.username === data.username);
 
         setIsAuthenticated(true);
-        setVolunteerData(matchedVolunteer || { fullName: data.username, status: 'Active' }); // Use live data if available
-      } else {
+        setVolunteerData(matchedVolunteer || { fullName: data.username, status: 'Active' }); 
         setError(data.message || "Sign In failed. Check credentials.");
       }
     } catch (err) {
@@ -153,7 +148,6 @@ const VolunteerDashboard = ({ onClose }) => {
           <button type="button" className="btn-secondary" onClick={onClose}>Close Portal</button>
         </div>
       </div>
-      {/* Note: ChatBox rendering logic is omitted here for brevity but should be included */}
     </div>
   );
 };
@@ -208,20 +202,14 @@ const LandingPage = () => {
             <li><button onClick={() => scrollToSection("hero")}>Home</button></li>
             <li><button onClick={() => scrollToSection("about")}>About</button></li>
             <li><button onClick={() => scrollToSection("how-it-works")}>How It Works</button></li>
-            {/* Removed Volunteer Portal link from nav menu */}
             <li><button onClick={() => scrollToSection("contact")}>Contact</button></li>
           </ul>
 
           <div className="nav-buttons">
-            {/* NEW POSITION: Volunteer Portal Button (Green/Blue styling) */}
             <button
-              className="btn-dashboard"
+              className="btn-volunteer-portal "
               onClick={() => setShowVolunteerChooser(true)}
-              style={{
-                border: '2px solid #4CAF50', // Green border
-                color: '#4CAF50', // Green text
-                marginRight: '10px', // Small gap before Admin button
-              }}
+              
             >
               Volunteer Portal
             </button>

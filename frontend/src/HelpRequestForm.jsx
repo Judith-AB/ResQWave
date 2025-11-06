@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import "./index.css";
 import { useRequests } from "./context/RequestsContext";
 import { useChat } from "./context/ChatContext";
-import { useVolunteers } from "./context/VolunteerContext";
+import { useVolunteers } from "./context/VolunteerContext"; 
 
 const API_BASE_URL = "http://localhost:3001/api/requests";
 
@@ -13,21 +14,21 @@ const VictimStatusChat = ({ request, onClose }) => {
     const [inputText, setInputText] = useState('');
     const messages = getMessages(request.id);
 
-    // Find the assigned volunteer's name based on the local context (if available)
+    // Find the assigned volunteer's name based on the local context 
     const assignedVolunteer = volunteers.find(v => v.id === request.assignedVolunteerId);
-    const volunteerName = assignedVolunteer ? assignedVolunteer.name : 'A Volunteer';
+    const volunteerName = assignedVolunteer ? assignedVolunteer.fullName : 'A Volunteer';
 
     const handleSend = (e) => {
         e.preventDefault();
         if (inputText.trim() === '') return;
-        addMessage(request.id, request.victimName, inputText.trim()); // Sender is the Victim's name
+        addMessage(request.id, request.victimName, inputText.trim()); 
         setInputText('');
     };
 
     return (
         <div className="form-overlay" style={{ background: 'rgba(0, 0, 0, 0.6)' }}>
-            <div className="form-container" style={{ width: '450px', padding: '0', overflow: 'hidden' }}>
-                {/* Status Header */}
+             <div className="form-container" style={{ width: '450px', padding: '0', overflow: 'hidden' }}>
+                 {/* Status Header */}
                 <div style={{ background: request.assignedVolunteerId ? '#4CAF50' : '#f44336', color: 'white', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
                         {request.assignedVolunteerId ? `✅ Matched with ${volunteerName}` : `🚨 Request ID: ${request.id} Pending... (Score: ${request.urgencyScore.toFixed(2)})`}
@@ -45,7 +46,7 @@ const VictimStatusChat = ({ request, onClose }) => {
                         <p className="mt-2 text-red-700 font-bold">Please wait. Coordinators are assigning help.</p>
                     )}
                 </div>
-
+                
                 {/* Chat Area (Uses logic from ChatBox) */}
                 <div style={{ height: '250px', overflowY: 'auto', padding: '1rem', background: '#f0f2f5' }}>
                     {messages.length === 0 && (
@@ -61,8 +62,7 @@ const VictimStatusChat = ({ request, onClose }) => {
                                 maxWidth: '75%',
                                 padding: '0.5rem 1rem',
                                 borderRadius: '15px',
-                                // Victim messages are red, Volunteer messages are blue
-                                backgroundColor: msg.sender === request.victimName ? '#f44336' : '#2196F3',
+                                backgroundColor: msg.sender === request.victimName ? '#f44336' : '#2196F3', 
                                 color: 'white',
                             }}>
                                 <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.8rem', opacity: 0.8 }}>
@@ -105,16 +105,15 @@ const HelpRequestForm = ({ onClose }) => {
         emergencyType: "",
         details: "",
     });
-    // This state tracks the submitted request object to switch to the status view
     const [submittedRequest, setSubmittedRequest] = useState(null);
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
+        
         try {
-            const response = await fetch(API_BASE_URL, { // Call POST /api/requests
+            const response = await fetch(API_BASE_URL, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
@@ -124,16 +123,15 @@ const HelpRequestForm = ({ onClose }) => {
 
             if (response.ok) {
                 // Use the real Request ID and Urgency Score returned by the backend
-                const newRequest = {
-                    ...formData,
-                    id: data.requestId,
-                    status: 'Pending',
-                    urgencyScore: data.urgencyScore
-                };
-
-                // Add to context for the victim's modal to show current status
-                addRequest(newRequest);
-                setSubmittedRequest(newRequest);
+                const newRequest = { 
+                    ...formData, 
+                    id: data.requestId, 
+                    status: 'Pending', 
+                    urgencyScore: data.urgencyScore 
+                }; 
+                
+                addRequest(newRequest); 
+                setSubmittedRequest(newRequest); 
             } else {
                 alert("Submission failed: " + (data.message || "Server error."));
             }
@@ -142,16 +140,15 @@ const HelpRequestForm = ({ onClose }) => {
             alert("Network error: Could not submit request.");
         }
     };
-
+    
     // RENDER: If request is submitted, show the status/chat view.
     if (submittedRequest) {
-        // Find the LATEST request data from context (in case admin assigned a volunteer quickly)
         const liveRequest = requests.find(req => req.id === submittedRequest.id) || submittedRequest;
-
+        
         return (
-            <VictimStatusChat
-                request={liveRequest}
-                onClose={onClose}
+            <VictimStatusChat 
+                request={liveRequest} 
+                onClose={onClose} 
             />
         );
     }
@@ -178,12 +175,14 @@ const HelpRequestForm = ({ onClose }) => {
                         Emergency Type:
                         <select name="emergencyType" value={formData.emergencyType} onChange={handleChange} required>
                             <option value="">--Select Assistance Needed--</option>
-                            <option value="Medical">🏥 Medical Aid</option>
-                            <option value="Food">🍎 Food / Water Supply</option>
-                            <option value="Rescue">🚨 Search & Rescue</option>
-                            <option value="Shelter">⛺ Temporary Shelter</option>
-                            <option value="Transportation">🚌 Transportation / Evacuation</option>
-                            <option value="Other">⚠️ Other / Critical Need</option>
+                            <option value="Medical">🏥 Medical Aid / First Aid</option>
+                            <option value="Water">💧 Drinking Water / Hydration</option>
+                            <option value="Food">🍲 Food Rations / Cooked Meals</option>
+                            <option value="Shelter">⛺ Temporary Shelter / Tarpaulin</option>
+                            <option value="Flooding">🌊 Flood / Monsoon Rescue</option>
+                            <option value="Missing">🔍 Search for Missing Person</option>
+                            <option value="Electricity">💡 Electricity / Power Loss</option>
+                            <option value="Other">⚠️ Other Critical Need</option>
                         </select>
                     </label>
                     <label>
