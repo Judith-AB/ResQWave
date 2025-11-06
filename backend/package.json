@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
+    "setup:admin": "node scripts/setupAdmin.js",
     "start": "node src/index.js",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev --name init"
@@ -19,6 +20,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "path-browserify": "^1.0.1",
     "socket.io": "^4.8.1",
     "sqlite3": "^5.1.7"
   },

@@ -17,6 +17,7 @@ model User {
   fullName              String
   contact               String
   location              String
+  skills                String?
   isVolunteer           Boolean  @default(false)
   isMedicalVerified     Boolean  @default(false)
   

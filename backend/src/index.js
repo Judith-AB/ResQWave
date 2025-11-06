@@ -1,17 +1,15 @@
-// resqwave/backend/src/index.js
+// resqwave/backend/src/index.js (FINAL SERVER CONFIG)
 
-import 'dotenv/config'; // Loads environment variables (like PORT) first
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
-import { Server } from 'socket.io'; // For real-time chat
+import { Server } from 'socket.io';
 
-// --- IMPORT ROUTES AND PRISMA CLIENT ---
+// --- IMPORT ROUTES ---
+// Must use the correct path and .js extension
 import authRoutes from '../routes/auth.js';
 import requestRoutes from '../routes/requests.js';
-// Note: We don't strictly need to import prisma client here, 
-// but we leave a note for future expansion/testing. 
-// import prisma from './client.js'; 
 
 
 const app = express();
@@ -21,20 +19,20 @@ const PORT = process.env.PORT || 3001;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Allows your React frontend to connect
+    origin: "http://localhost:5173",
     methods: ["GET", "POST"]
   }
 });
 
 // Middleware
 app.use(cors({
-    origin: "http://localhost:5173"
+  origin: "http://localhost:5173"
 }));
 app.use(express.json());
 
-// --- USE API ROUTES ---
-app.use('/api/auth', authRoutes);     // Handles user/volunteer signup and login
-app.use('/api/requests', requestRoutes); // Handles victim submission and admin fetches
+// --- USE API ROUTES (CRITICAL: Uses .default for robustness) ---
+app.use('/api/auth', authRoutes.default || authRoutes);
+app.use('/api/requests', requestRoutes.default || requestRoutes);
 
 // --- Basic Test Route ---
 app.get('/api/test', (req, res) => {
@@ -42,11 +40,10 @@ app.get('/api/test', (req, res) => {
 });
 
 
-// --- Socket.IO Connection Logic (Real-Time Setup) ---
+// --- Socket.IO Connection Logic (Initial Setup) ---
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  // Logic for joining a chat room (Request ID)
   socket.on('join_room', (roomId) => {
     socket.join(roomId);
     console.log(`User ${socket.id} joined room ${roomId}`);

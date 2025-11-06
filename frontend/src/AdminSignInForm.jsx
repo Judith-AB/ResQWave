@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import "./index.css";
 import { useAuth } from "./context/AuthContext";
 
+// Define the API URL (Must match your Node.js server)
+const API_BASE_URL = "http://localhost:3001/api/auth";
 
+// Icon Placeholders
 const Shield = () => <span style={{ marginRight: '8px' }}>🛡️</span>;
 const X = () => <span style={{ fontSize: '1.2rem' }}>&times;</span>;
 const User = () => <span style={{ marginRight: '5px' }}>👤</span>;
@@ -27,14 +30,28 @@ const AdminSignInForm = ({ onClose }) => {
     setIsSubmitting(true);
     setError("");
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
 
-    if (credentials.username === "admin" && credentials.password === "admin123") {
-      loginAdmin();
-      alert("✅ Admin authentication successful! Redirecting to dashboard...");
-      onClose();
-    } else {
-      setError("Invalid username or password. Please try again.");
+      const data = await response.json();
+
+      if (response.ok && data.role === 'admin') {
+        loginAdmin();
+        alert(" Admin authentication successful!");
+        onClose();
+      } else {
+        setError(data.message || "Invalid username or password. Please try again.");
+      }
+    } catch (error) {
+      console.error('Login Failed:', error);
+      setError("Network error or server connection failed. Is the backend running?");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -43,7 +60,7 @@ const AdminSignInForm = ({ onClose }) => {
     <div className="form-overlay">
       <div className="form-container" style={{ width: '380px', padding: '0' }}>
 
-        
+
         <div style={{
           background: 'linear-gradient(135deg, #4CAF50, #388E3C)',
           color: 'white',
@@ -70,7 +87,7 @@ const AdminSignInForm = ({ onClose }) => {
           </button>
         </div>
 
-     
+
         <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
           {error && (
@@ -127,7 +144,7 @@ const AdminSignInForm = ({ onClose }) => {
             </div>
           </div>
 
-        
+
           <div style={{ backgroundColor: '#fffbe6', borderLeft: '4px solid #fbbf24', padding: '0.75rem', borderRadius: '4px', fontSize: '0.9rem' }}>
             <h4 style={{ color: '#92400e', fontWeight: 'bold', margin: 0 }}>Demo Credentials:</h4>
             <p style={{ margin: '5px 0 0', color: '#92400e' }}>
