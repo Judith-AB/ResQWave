@@ -33,6 +33,9 @@ body {
   display: flex;
   justify-content: space-around;
   align-items: center;
+  height: 90px;
+
+
 
 }
 
@@ -153,7 +156,7 @@ body {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding-top: 150px;
+  padding-top: 120px;
 }
 
 .hero-container {
@@ -396,7 +399,8 @@ body {
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
+  padding-top: 80px;
   z-index: 999;
 }
 
@@ -408,6 +412,9 @@ body {
   max-width: 90%;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
   animation: slideDown 0.3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .form-container h2 {
