@@ -8,12 +8,12 @@ dotenv.config(); // Load environment variables
 
 const router = express.Router();
 
-// ✅ Initialize Groq client
+// Initialize Groq client
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY
 });
 
-// ✅ Original scoring system as fallback
+//  Original scoring system as fallback
 const originalCalculateUrgencyScore = (emergencyType) => {
     let score = 0;
 
@@ -42,7 +42,7 @@ const originalCalculateUrgencyScore = (emergencyType) => {
     return parseFloat((score + Math.random() * 0.5).toFixed(2));
 };
 
-// ✅ New AI-enhanced urgency score calculator
+//  New AI-enhanced urgency score calculator
 const calculateUrgencyScore = async (emergencyType, details) => {
     try {
         const prompt = `Analyze this emergency situation and rate its urgency on a scale of 1-10, where 10 is most urgent.
@@ -59,7 +59,7 @@ const calculateUrgencyScore = async (emergencyType, details) => {
 
         const score = parseFloat(completion.choices[0].message.content.trim());
 
-        // ✅ Ensure it’s a valid score
+        // Ensure it’s a valid score
         if (isNaN(score) || score < 1 || score > 10) {
             return originalCalculateUrgencyScore(emergencyType);
         }
@@ -72,7 +72,7 @@ const calculateUrgencyScore = async (emergencyType, details) => {
     }
 };
 
-// ✅ Route to submit new request
+// Route to submit new request
 router.post('/', async (req, res) => {
     const { name, contact, location, emergencyType, details } = req.body;
 
