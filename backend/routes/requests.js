@@ -1,17 +1,26 @@
 // resqwave/backend/routes/requests.js
-
 import express from 'express';
 import prisma from '../src/client.js';
+import Groq from 'groq-sdk';
+import dotenv from 'dotenv';
+
+dotenv.config(); // Load environment variables
 
 const router = express.Router();
 
-const calculateUrgencyScore = (emergencyType) => {
+// ✅ Initialize Groq client
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY
+});
+
+// ✅ Original scoring system as fallback
+const originalCalculateUrgencyScore = (emergencyType) => {
     let score = 0;
 
     switch (emergencyType.toLowerCase()) {
         case 'medical':
         case 'rescue':
-            score = 9.5; // Highest initial priority
+            score = 9.5;
             break;
         case 'shelter':
         case 'transportation':
@@ -33,7 +42,37 @@ const calculateUrgencyScore = (emergencyType) => {
     return parseFloat((score + Math.random() * 0.5).toFixed(2));
 };
 
+// ✅ New AI-enhanced urgency score calculator
+const calculateUrgencyScore = async (emergencyType, details) => {
+    try {
+        const prompt = `Analyze this emergency situation and rate its urgency on a scale of 1-10, where 10 is most urgent.
+        Emergency Type: ${emergencyType}
+        Details: ${details}
+        Respond only with a number between 1 and 10.`;
 
+        const completion = await groq.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            model: "openai/gpt-oss-120b",
+            temperature: 0.3,
+            max_tokens: 10
+        });
+
+        const score = parseFloat(completion.choices[0].message.content.trim());
+
+        // ✅ Ensure it’s a valid score
+        if (isNaN(score) || score < 1 || score > 10) {
+            return originalCalculateUrgencyScore(emergencyType);
+        }
+
+        return score;
+
+    } catch (error) {
+        console.error('Groq API Error:', error);
+        return originalCalculateUrgencyScore(emergencyType);
+    }
+};
+
+// ✅ Route to submit new request
 router.post('/', async (req, res) => {
     const { name, contact, location, emergencyType, details } = req.body;
 
@@ -42,10 +81,10 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        // 1. Calculate the urgency score
-        const urgencyScore = calculateUrgencyScore(emergencyType);
+        // AI-based urgency scoring
+        const urgencyScore = await calculateUrgencyScore(emergencyType, details || '');
 
-        // 2. Save the request to the Request table
+        // Save the request to DB
         const newRequest = await prisma.request.create({
             data: {
                 victimName: name,
@@ -58,7 +97,6 @@ router.post('/', async (req, res) => {
             }
         });
 
-        // 3. Respond with data needed by the frontend modal
         res.status(201).json({
             message: "Help request submitted successfully.",
             requestId: newRequest.id,
@@ -71,21 +109,20 @@ router.post('/', async (req, res) => {
     }
 });
 
-
+//  Route to fetch pending requests
 router.get('/pending', async (req, res) => {
     try {
         const pendingRequests = await prisma.request.findMany({
             where: {
                 status: {
-                    in: ['Pending', 'Assigned', 'Atmost'] // Include all active states
+                    in: ['Pending', 'Assigned', 'Atmost']
                 }
             },
             orderBy: {
-                urgencyScore: 'desc', // MOST URGENT requests appear at the top
+                urgencyScore: 'desc',
             },
         });
 
-        // 2. Fetch all volunteers for display/assignment purposes
         const volunteers = await prisma.user.findMany({
             where: { isVolunteer: true },
             select: {
@@ -98,7 +135,6 @@ router.get('/pending', async (req, res) => {
             }
         });
 
-        // 3. Respond with both sets of data
         res.status(200).json({
             requests: pendingRequests,
             volunteers: volunteers
