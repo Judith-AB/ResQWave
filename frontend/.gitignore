@@ -1,0 +1,20 @@
+# Dependencies
+/node_modules
+/node_modules/*
+!/node_modules/resqwave/node_modules # Prevents issues if the folder was nested deep
+
+# Build Output
+/dist
+/build
+/out
+
+npm-debug.log
+yarn-error.log
+
+.vite/
+.vite-temp/
+.DS_Store
+
+# Ignore root-level generated files
+package-lock.json
+npm-debug.log

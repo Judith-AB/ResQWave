@@ -1,5 +1,19 @@
-node_modules
-# Keep environment variables out of version control
-.env
+# Dependencies
+/node_modules
 
-/generated/prisma
+
+.env
+.env.development
+.env.production
+.env.local
+
+# Database/Prisma
+/prisma/dev.db           # Local SQLite database file
+/prisma/migrations/      # Keep migrations locally until you are ready to push schema changes
+/prisma/seed.js.map
+/prisma/seed.js
+
+# Build/Logs
+/dist
+/logs
+npm-debug.log
