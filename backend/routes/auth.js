@@ -1,14 +1,11 @@
-// resqwave/backend/routes/auth.js
-
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import prisma from '../src/client.js'; // CRITICAL: Path to client file
+import prisma from '../src/client.js';
 
 const router = express.Router();
 
-// --- POST /api/auth/signup (Volunteer Registration) ---
 router.post('/signup', async (req, res) => {
-    const { fullName, contact, location, username, password, isMedicalCertified } = req.body;
+    const { fullName, contact, location, username, password, isMedicalCertified, skills } = req.body;
 
     if (!username || !password || !fullName) {
         return res.status(400).json({ message: "Missing required fields." });
@@ -25,8 +22,10 @@ router.post('/signup', async (req, res) => {
                 location: location || 'N/A',
                 username,
                 passwordHash,
+                skills: skills || null,
                 isVolunteer: true,
                 isMedicalVerified: false,
+                status: 'Available',
             },
         });
 
@@ -54,33 +53,47 @@ router.post('/signup', async (req, res) => {
 });
 
 
-// --- POST /api/auth/login (Admin & Volunteer Sign-In) ---
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
     try {
         const user = await prisma.user.findUnique({
             where: { username },
+            select: {
+                id: true,
+                username: true,
+                fullName: true,
+                passwordHash: true, 
+                contact: true,
+                location: true,
+                skills: true,
+                isVolunteer: true,
+                isMedicalVerified: true,
+                status: true,
+            }
         });
 
         if (!user) {
             return res.status(401).json({ message: "Invalid username or password." });
         }
 
+       
         const isMatch = await bcrypt.compare(password, user.passwordHash);
 
         if (!isMatch) {
             return res.status(401).json({ message: "Invalid username or password." });
         }
 
-        // Determine role: If username is 'admin', set role explicitly.
+   
+        const { passwordHash, ...userPayload } = user;
+
+        //  If username is 'admin', set role explicitly.
         let role = user.username === 'admin' ? 'admin' : 'volunteer';
 
-        // Response tells frontend whether to show Admin Dashboard or Volunteer Status
+
         res.status(200).json({
             message: "Login successful!",
-            id: user.id,
-            username: user.username,
+            ...userPayload, 
             role: role,
         });
 

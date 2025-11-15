@@ -18,6 +18,7 @@ model User {
   contact               String
   location              String
   skills                String?
+  status                String   @default("Available")
   isVolunteer           Boolean  @default(false)
   isMedicalVerified     Boolean  @default(false)
   

@@ -5,11 +5,9 @@ import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
-
-// --- IMPORT ROUTES ---
-// Must use the correct path and .js extension
 import authRoutes from '../routes/auth.js';
 import requestRoutes from '../routes/requests.js';
+import assignmentRoutes from '../routes/assignments.js'
 
 
 const app = express();
@@ -33,7 +31,7 @@ app.use(express.json());
 // --- USE API ROUTES (CRITICAL: Uses .default for robustness) ---
 app.use('/api/auth', authRoutes.default || authRoutes);
 app.use('/api/requests', requestRoutes.default || requestRoutes);
-
+app.use('/api/assignments', assignmentRoutes.default || assignmentRoutes);
 // --- Basic Test Route ---
 app.get('/api/test', (req, res) => {
   res.json({ message: "Backend is running and ready!" });
