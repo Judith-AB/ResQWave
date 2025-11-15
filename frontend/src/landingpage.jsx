@@ -3,12 +3,18 @@ import HelpRequestForm from "./HelpRequestForm";
 import VolunteerForm from "./VolunteerForm";
 import AdminSignInForm from "./AdminSignInForm";
 import ChatBox from "./ChatBox";
+import VolunteerDashboard from "./VolunteerDashboard.jsx";
+import VolunteerSignInModal from "./VolunteerSignInModal";
+
 import "./index.css";
 
+// *** REQUIRED CONTEXT HOOK IMPORTS ***
 import { useVolunteers } from "./context/VolunteerContext";
 import { useRequests } from "./context/RequestsContext";
 
 const API_BASE_URL = "http://localhost:3001/api/auth";
+
+// --- Volunteer Chooser Modal (Used by the 'Volunteer Portal' button) ---
 const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
   <div className="form-overlay">
     <div className="form-container" style={{ width: '350px', textAlign: 'center', padding: '2rem' }}>
@@ -19,7 +25,7 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
           onClick={() => { onClose(); openSignIn(); }}
           style={{ background: 'linear-gradient(135deg, #4CAF50, #388E3C)', border: 'none' }}
         >
-          ✅ Sign In / Check Status
+          ✅ Sign In
         </button>
         <button
           className="btn-secondary"
@@ -43,123 +49,18 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
 // --- END Volunteer Chooser ---
 
 
-// --- Volunteer Dashboard Component (Sign-In/Status Logic) ---
-const VolunteerDashboard = ({ onClose }) => {
-  const { volunteers } = useVolunteers();
-  const { requests } = useRequests();
-
-  // Credentials for Sign-In
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const [volunteerData, setVolunteerData] = useState(null);
-  const assignments = volunteerData ? requests.filter(req => req.assignedVolunteerId === volunteerData.id && req.status !== 'Completed') : [];
-
-  const handleChange = (e) => {
-    setCredentials({ ...credentials, [e.target.name]: e.target.value });
-    setError(null);
-  };
-
-  const handleSignIn = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      const data = await response.json();
-
-      if (response.ok && data.isVolunteer) {
-        const matchedVolunteer = volunteers.find(v => v.username === data.username);
-
-        setIsAuthenticated(true);
-        setVolunteerData(matchedVolunteer || { fullName: data.username, status: 'Active' }); 
-        setError(data.message || "Sign In failed. Check credentials.");
-      }
-    } catch (err) {
-      setError("Network error. Ensure the backend is running.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- RENDER LOGIC ---
-  if (!isAuthenticated) {
-    return (
-      <div className="form-overlay">
-        <div className="form-container" style={{ width: '450px' }}>
-          <h2 style={{ color: '#4CAF50', textAlign: 'center' }}>Volunteer Sign-In</h2>
-          <p style={{ textAlign: 'center', color: '#666', marginBottom: '1rem' }}>Access your assigned tasks and communication portal.</p>
-          <form onSubmit={handleSignIn}>
-            {error && <div style={{ color: 'white', background: '#f44336', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>{error}</div>}
-
-            <label>Username:<input type="text" name="username" value={credentials.username} onChange={handleChange} required /></label>
-            <label>Password:<input type="password" name="password" value={credentials.password} onChange={handleChange} required /></label>
-
-            <div className="form-actions" style={{ justifyContent: 'center', gap: '1rem', marginTop: '1.5rem' }}>
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Checking...' : 'Sign In'}
-              </button>
-              <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Close</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="form-overlay">
-      <div className="form-container" style={{ width: '450px' }}>
-        <h2 style={{ color: '#1565C0', textAlign: 'center' }}>{volunteerData.fullName}'s Tasks</h2>
-        <div style={{ backgroundColor: '#f0f0f0', padding: '1rem', borderRadius: '8px', minHeight: '120px', marginTop: '1rem', color: '#333' }}>
-
-          <p style={{ fontWeight: 'bold', borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>Status: {volunteerData.status || 'Available'}</p>
-          <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '5px' }}>Skills: **{volunteerData.skills || 'N/A'}**</p>
-
-          {assignments.length > 0 ? (
-            <div style={{ marginTop: '0.8rem' }}>
-              <p style={{ color: '#4CAF50', fontWeight: '600' }}>✅ Assigned Tasks ({assignments.length}):</p>
-              {assignments.map(req => (
-                <div key={req.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Req {req.id} in {req.location}</span>
-                  <button
-                    onClick={() => console.log('Open Chat Here')} // Placeholder for Chat function
-                    className="btn-primary"
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', background: '#2196F3' }}
-                  >
-                    Open Chat
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ marginTop: '0.8rem' }}>No active assignments found. Thank you for being available!</p>
-          )}
-        </div>
-        <div className="form-actions" style={{ justifyContent: 'space-between', marginTop: '1.5rem' }}>
-          <button type="button" className="btn-primary" onClick={() => setIsAuthenticated(false)}>Sign Out</button>
-          <button type="button" className="btn-secondary" onClick={onClose}>Close Portal</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-// --- END Volunteer Dashboard Component ---
-
-
+// --- LANDING PAGE COMPONENT ---
 const LandingPage = () => {
+  // CRITICAL FIX: Ensure useVolunteers is called inside the component function
+  const { volunteers } = useVolunteers();
+
+  // Local State
   const [showHelpForm, setShowHelpForm] = useState(false);
-  const [showVolunteerForm, setShowVolunteerForm] = useState(false);
+  const [showVolunteerForm, setShowVolunteerForm] = useState(false); // Sign Up Form
   const [showAdminForm, setShowAdminForm] = useState(false);
-  const [showVolunteerDashboard, setShowVolunteerDashboard] = useState(false);
-  const [showVolunteerChooser, setShowVolunteerChooser] = useState(false); // NEW STATE FOR CHOOSER MODAL
+  const [showVolunteerChooser, setShowVolunteerChooser] = useState(false);
+  const [showVolunteerSignIn, setShowVolunteerSignIn] = useState(false);
+  const [volunteerUser, setVolunteerUser] = useState(null); // Holds user data after successful login
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -169,6 +70,7 @@ const LandingPage = () => {
   };
 
   useEffect(() => {
+    // ... (IntersectionObserver logic for scroll effects) ...
     const elements = document.querySelectorAll(".process-step, .stat-item");
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
@@ -189,6 +91,20 @@ const LandingPage = () => {
     return () => observer.disconnect();
   }, []);
 
+  // Function run on successful Sign-In (CRITICAL FIX)
+  const handleVolunteerSuccess = (userData) => {
+    // We rely ONLY on the validated data returned by the API to trigger the view change.
+    if (userData && userData.id) {
+      setVolunteerUser(userData); // Saves the API data (ID, username, role)
+      setShowVolunteerSignIn(false); // Close the modal, triggering the view switch
+    }
+  };
+
+  // Conditional rendering of the full Volunteer Dashboard (replaces landing page)
+  if (volunteerUser) {
+    return <VolunteerDashboard onClose={() => setVolunteerUser(null)} user={volunteerUser} />;
+  }
+
   return (
     <div>
       {/* Header */}
@@ -206,14 +122,14 @@ const LandingPage = () => {
           </ul>
 
           <div className="nav-buttons">
+            {/* Volunteer Portal Button (Green/Blue styling) */}
             <button
-              className="btn-volunteer-portal "
+              className="btn-dashboard"
               onClick={() => setShowVolunteerChooser(true)}
-              
+              style={{ border: '2px solid #4CAF50', color: '#4CAF50', marginRight: '10px' }}
             >
               Volunteer Portal
             </button>
-
             <button className="btn-dashboard" onClick={() => setShowAdminForm(true)}>Admin Dashboard</button>
             <button className="btn-help" onClick={() => setShowHelpForm(true)}>Get Help Now</button>
           </div>
@@ -245,7 +161,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* How It Works (Restored Content) */}
       <section id="how-it-works" className="how-it-works">
         <div className="section-container">
           <h2 className="section-title">How It Works</h2>
@@ -279,7 +195,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* About Section */}
+      {/* About Section (Restored Content) */}
       <section id="about" className="about">
         <div className="section-container">
           <h2 className="section-title">About This Project</h2>
@@ -288,7 +204,8 @@ const LandingPage = () => {
           </p>
         </div>
       </section>
-      {/* Footer */}
+
+      {/* Footer (Restored Content with 112 update) */}
       <footer id="contact" className="footer">
         <div className="footer-container">
           <div>
@@ -308,31 +225,32 @@ const LandingPage = () => {
           <div className="footer-section">
             <h3>Emergency Contact</h3>
             <div className="emergency-contact">
-              {/* --- UPDATED TO INDIA'S ALL-IN-ONE EMERGENCY NUMBER (112) --- */}
               <h4>24/7 Relief Helpline</h4>
-              <div className="emergency-phone">91 (987) 654-3210</div>
-              {/* --- END CHANGE --- */}
+              <div className="emergency-phone">(+91) 6781234560</div>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* Forms and Modals */}
+      {/* Forms and Modals  */}
       {showHelpForm && <HelpRequestForm onClose={() => setShowHelpForm(false)} />}
       {showVolunteerForm && <VolunteerForm onClose={() => setShowVolunteerForm(false)} />}
       {showAdminForm && <AdminSignInForm onClose={() => setShowAdminForm(false)} />}
 
-      {/* NEW: RENDER VOLUNTEER CHOOSER */}
       {showVolunteerChooser && (
         <VolunteerChooser
           onClose={() => setShowVolunteerChooser(false)}
-          openSignIn={() => setShowVolunteerDashboard(true)}
-          openSignUp={() => setShowVolunteerForm(true)}
+          openSignIn={() => { setShowVolunteerChooser(false); setShowVolunteerSignIn(true); }}
+          openSignUp={() => { setShowVolunteerChooser(false); setShowVolunteerForm(true); }}
         />
       )}
 
-      {/* Volunteer Dashboard (Used for Sign-In/Status Check) */}
-      {showVolunteerDashboard && <VolunteerDashboard onClose={() => setShowVolunteerDashboard(false)} />}
+      {showVolunteerSignIn && (
+        <VolunteerSignInModal
+          onClose={() => setShowVolunteerSignIn(false)}
+          onSuccess={handleVolunteerSuccess}
+        />
+      )}
     </div>
   );
 };
