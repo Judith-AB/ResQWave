@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResQwav - Chat</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .top-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            z-index: 1000; /* Ensure it's on top */
+        }
+
+        .top-bar .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-profile span {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .user-profile .role-badge {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            max-width: 1600px; /* Increased max-width */
+            margin: 20px auto;
+            background: #16213e;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #0f3460;
+            border-right: 1px solid #1a1a2e;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+            padding: 0 20px 15px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #667eea;
+        }
+
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 16px;
+            padding: 0 20px 10px;
+            color: #ccc;
+        }
+
+        .chat-partners-list, .requests-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 10px;
+        }
+
+        .chat-partner-item, .request-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 10px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.2s, transform 0.1s;
+            position: relative;
+        }
+
+        .chat-partner-item:hover, .request-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(3px);
+        }
+
+        .chat-partner-item.active {
+            background: linear-gradient(90deg, #667eea30 0%, #764ba230 100%);
+            border-left: 3px solid #667eea;
+        }
+
+        .partner-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .partner-info h4 {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .partner-info p {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+        
+        .partner-info {
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .main-chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .chat-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .messages-display {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #1a1a2e;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.own {
+            text-align: right;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            font-size: 14px;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .message:not(.own) .message-content {
+            background: #0f3460;
+            color: #fff;
+            text-align: left;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.own .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-sender {
+            font-size: 11px;
+            margin-bottom: 4px;
+            opacity: 0.7;
+        }
+
+        .message-time {
+            font-size: 10px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        .typing-indicator {
+            font-size: 12px;
+            color: #667eea;
+            padding: 10px 20px;
+            min-height: 35px;
+            font-style: italic;
+            background: #16213e;
+            border-top: 1px solid #0f3460;
+        }
+
+        .input-area {
+            padding: 15px 20px;
+            background: #16213e;
+            border-top: 1px solid #0f3460;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 18px;
+            background: #0f3460;
+            border: 1px solid #1a1a2e;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .message-input:focus {
+            border-color: #667eea;
+        }
+
+        .message-input::placeholder {
+            color: #6b7280;
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .messages-display::-webkit-scrollbar, .chat-partners-list::-webkit-scrollbar, .requests-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-display::-webkit-scrollbar-track, .chat-partners-list::-webkit-scrollbar-track, .requests-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages-display::-webkit-scrollbar-thumb, .chat-partners-list::-webkit-scrollbar-thumb, .requests-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 3px;
+        }
+
+        .role-badge {
+            font-size: 10px;
+            padding: 3px 7px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+
+        /* Initial state for no chat selected */
+        .no-chat-selected {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #ccc;
+            font-size: 18px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .no-chat-selected svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .no-chat-selected p {
+            max-width: 300px;
+            line-height: 1.5;
+            opacity: 0.8;
+        }
+
+        /* Request specific styles */
+        .request-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #1a1a2e;
+        }
+
+        .request-item-header {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .request-item-body {
+            font-size: 12px;
+            opacity: 0.8;
+            width: 100%;
+        }
+
+        .request-item-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .request-status {
+            font-size: 10px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            color: #fff;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .status-pending { background: #f39c12; }
+        .status-assigned { background: #3498db; }
+        .status-resolved { background: #27ae60; }
+        .status-conflict { background: #e74c3c; }
+
+        .request-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        .request-btn:hover { background: #764ba2; }
+        .request-btn.accept { background: #27ae60; }
+        .request-btn.accept:hover { background: #2ecc71; }
+        .request-btn.resolve { background: #3498db; }
+        .request-btn.resolve:hover { background: #2980b9; }
+        .request-btn.conflict { background: #e74c3c; }
+        .request-btn.conflict:hover { background: #c0392b; }
+
+        .create-request-form {
+            padding: 15px;
+            background: #0f3460;
+            border-top: 1px solid #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .create-request-form textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #1a1a2e;
+            background: #16213e;
+            color: #fff;
+            resize: vertical;
+            min-height: 60px;
+            font-size: 14px;
+        }
+
+        .create-request-form button {
+            align-self: flex-end;
+            padding: 8px 15px;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .create-request-form button:hover {
+            background: #764ba2;
+        }
+
+        .online-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ccc; /* Default offline */
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            border: 1px solid #0f3460;
+        }
+
+        .online-status-dot.online {
+            background-color: #27ae60; /* Green for online */
+        }
+
+        .new-message-indicator {
+            width: 10px;
+            height: 10px;
+            background-color: #e74c3c;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="logo">ResQwav</div>
+        <div class="user-profile">
+            <span>{{ current_user.username }}</span>
+            <span class="role-badge">{{ current_user.role }}</span>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h2>Online Users</h2>
+                <div class="chat-partners-list" id="chatPartnersList">
+                    {% for partner in online_chat_partners %}
+                        <div class="chat-partner-item" 
+                             data-user-id="{{ partner.id }}" 
+                             data-username="{{ partner.username }}" 
+                             data-role="{{ partner.role }}"
+                             onclick="openChat('{{ partner.id }}', '{{ partner.username }}', '{{ partner.role }}')">
+                            <div class="partner-avatar">{{ partner.username[0] | upper }}</div>
+                            <div class="partner-info">
+                                <h4>{{ partner.username }}</h4>
+                                <p><span class="role-badge">{{ partner.role }}</span></p>
+                            </div>
+                            <div class="online-status-dot {% if partner.online %}online{% endif %}" id="status-{{ partner.id }}"></div>
+                            <div class="new-message-indicator" id="new-msg-{{ partner.id }}"></div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>Help Requests</h2>
+                <div class="requests-list" id="requestsList">
+                    <!-- Requests will be loaded here by JavaScript -->
+                </div>
+                {% if current_user.role == 'victim' %}
+                <div class="create-request-form">
+                    <textarea id="requestDescription" placeholder="Describe your help request..."></textarea>
+                    <button onclick="createHelpRequest()">Submit Request</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="main-chat-area" id="mainChatArea">
+            <div class="no-chat-selected" id="noChatSelected">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 1.523-.806 2.94-2.003 3.791a5.697 5.697 0 01-2.76 1.09C14.07 16.988 13 17.25 12 17.25s-2.07-.262-4.237-.769a5.697 5.697 0 01-2.76-1.09C3.806 14.94 3 13.523 3 12c0-1.523.806-2.94 2.003-3.791a5.697 5.697 0 012.76-1.09C9.93 6.762 11 6.5 12 6.5s2.07.262 4.237.769a5.697 5.697 0 012.76 1.09C20.194 9.06 21 10.477 21 12z" />
+                </svg>
+                <p>Select a user from the left to start chatting!</p>
+            </div>
+            
+            <!-- Dynamic chat window will be loaded here -->
+            <div id="chatWindowContainer" style="display: none; flex-direction: column; flex: 1;">
+                <div class="chat-header">
+                    <div class="partner-avatar" id="currentChatAvatar"></div>
+                    <h3 id="currentChatUserName"></h3>
+                    <span class="role-badge" id="currentChatUserRole"></span>
+                </div>
+                <div class="messages-display" id="messagesDisplay"></div>
+                <div class="typing-indicator" id="typingIndicator"></div>
+                <div class="input-area">
+                    <input 
+                        type="text" 
+                        class="message-input" 
+                        id="messageInput"
+                        placeholder="Type a message..."
+                        onkeypress="handleMessageInputKeyPress(event)"
+                        oninput="handleTyping()"
+                    >
+                    <button class="send-btn" onclick="sendMessage()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script id="current-user-data" type="application/json">
+        {{ current_user | tojson | safe }}
+    </script>
+    <script id="online-chat-partners-data" type="application/json">
+        {{ online_chat_partners | tojson | safe }}
+    </script>
+
+    <script>
+        const SOCKET_URL = window.location.origin; // Use current origin for deployment
+        const socket = io(SOCKET_URL, {
+            autoConnect: false,
+            withCredentials: true
+        });
+
+        const CURRENT_USER = JSON.parse(document.getElementById('current-user-data').textContent);
+        let onlineChatPartners = JSON.parse(document.getElementById('online-chat-partners-data').textContent); // Make this mutable
+        
+        let currentChatRoomId = null;
+        let currentChatPartnerId = null;
+        let typingTimeout = null;
+        let activeRequests = []; // To store fetched requests
+
+        // --- Socket.IO Event Handlers ---
+        socket.on('connect', () => {
+            console.log(`Connected to server as ${CURRENT_USER.username} (${CURRENT_USER.id})`);
+            // The backend handles the initial user status update and room joining (user_id room)
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+
+        socket.on('room_joined', (data) => {
+            console.log(`Joined room: ${data.room_id} with ${data.target_user_name}`);
+            currentChatRoomId = data.room_id;
+            currentChatPartnerId = data.target_user_id;
+            
+            loadMessageHistory(currentChatRoomId);
+            // Clear new message indicator for this partner
+            document.getElementById(`new-msg-${currentChatPartnerId}`).style.display = 'none';
+        });
+
+        socket.on('new_message', (data) => {
+            if (data.room_id === currentChatRoomId) {
+                addMessageToDisplay(data);
+            } else {
+                // Show new message indicator on sidebar for the relevant partner
+                const partnerId = data.sender_id === CURRENT_USER.id ? getOtherUserIdInRoom(data.room_id) : data.sender_id;
+                if (partnerId) {
+                    const newMsgIndicator = document.getElementById(`new-msg-${partnerId}`);
+                    if (newMsgIndicator) {
+                        newMsgIndicator.style.display = 'block';
+                    }
+                }
+            }
+        });
+
+        socket.on('user_status_update', (data) => {
+            const statusDot = document.getElementById(`status-${data.user_id}`);
+            if (statusDot) {
+                if (data.online) {
+                    statusDot.classList.add('online');
+                } else {
+                    statusDot.classList.remove('online');
+                }
+            }
+            // Re-render chat partners list to reflect changes or new users if needed
+            // For now, we rely on the initial list from Flask and update status dots.
+            // A full implementation might re-fetch online_chat_partners.
+        });
+
+        socket.on('user_typing', (data) => {
+            if (data.room_id === currentChatRoomId && data.user_id !== CURRENT_USER.id) {
+                showTypingIndicator(data.username, data.is_typing);
+            }
+        });
+
+        socket.on('request_assigned_chat_ready', (data) => {
+            console.log('Request assigned, chat ready:', data);
+            // This event means a victim-volunteer chat room is ready
+            // Determine who the partner is for the current user
+            const partnerId = data.victim_id === CURRENT_USER.id ? data.volunteer_id : data.victim_id;
+            const partnerName = data.victim_id === CURRENT_USER.id ? data.volunteer_name : data.victim_name;
+            const partnerRole = data.victim_id === CURRENT_USER.id ? 'volunteer' : 'victim'; // This might need to be fetched from a global user list
+            
+            // If the partner isn't in our current onlineChatPartners list, add them
+            if (!onlineChatPartners.some(p => p.id === partnerId)) {
+                onlineChatPartners.push({ id: partnerId, username: partnerName, role: partnerRole, online: true }); // Assume online
+                renderChatPartners(); // Re-render the sidebar
+            }
+            
+            // Automatically open the chat with this new partner
+            openChat(partnerId, partnerName, partnerRole);
+            loadRequests(); // Refresh requests list
+            alert(`Chat with ${partnerName} ready for request ${data.request_id}!`);
+        });
+
+        socket.on('conflict_chat_ready', (data) => {
+            console.log('Conflict chat ready:', data);
+            // Determine who the partner is for the current user
+            const partnerId = data.volunteer_id === CURRENT_USER.id ? data.admin_id : data.volunteer_id;
+            const partnerName = data.volunteer_id === CURRENT_USER.id ? `Admin (${data.admin_id.substring(0,4)})` : data.volunteer_name;
+            const partnerRole = data.volunteer_id === CURRENT_USER.id ? 'admin' : 'volunteer';
+            
+            if (!onlineChatPartners.some(p => p.id === partnerId)) {
+                onlineChatPartners.push({ id: partnerId, username: partnerName, role: partnerRole, online: true });
+                renderChatPartners();
+            }
+            openChat(partnerId, partnerName, partnerRole);
+            loadRequests(); // Refresh requests list
+            alert(`Conflict chat with ${partnerName} ready for request ${data.request_id}!`);
+        });
+
+        socket.on('request_resolved', (data) => {
+            alert(`Request ${data.request_id} has been resolved!`);
+            loadRequests(); // Refresh requests list
+        });
+
+        socket.on('new_help_request', (data) => {
+            // Only show for relevant roles
+            if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'volunteer') {
+                alert(`New help request from ${data.victim_name}: ${data.description.substring(0, 50)}...`);
+                loadRequests(); // Refresh requests list
+            }
+        });
+
+        socket.on('error', (data) => {
+            console.error('Server error:', data.message);
+            alert('Error: ' + data.message);
+        });
+
+        // --- Chat UI Functions ---
+
+        function renderChatPartners() {
+            const list = document.getElementById('chatPartnersList');
+            list.innerHTML = ''; // Clear existing list
+            onlineChatPartners.forEach(partner => {
+                const partnerItem = document.createElement('div');
+                partnerItem.className = 'chat-partner-item';
+                partnerItem.setAttribute('data-user-id', partner.id);
+                partnerItem.setAttribute('data-username', partner.username);
+                partnerItem.setAttribute('data-role', partner.role);
+                partnerItem.onclick = () => openChat(partner.id, partner.username, partner.role);
+                
+                partnerItem.innerHTML = `
+                    <div class="partner-avatar">${partner.username[0].toUpperCase()}</div>
+                    <div class="partner-info">
+                        <h4>${partner.username}</h4>
+                        <p><span class="role-badge">${partner.role}</span></p>
+                    </div>
+                    <div class="online-status-dot ${partner.online ? 'online' : ''}" id="status-${partner.id}"></div>
+                    <div class="new-message-indicator" id="new-msg-${partner.id}"></div>
+                `;
+                list.appendChild(partnerItem);
+            });
+        }
+
+        function openChat(partnerId, partnerUsername, partnerRole) {
+            // Remove active class from previous partner
+            const prevActive = document.querySelector('.chat-partner-item.active');
+            if (prevActive) {
+                prevActive.classList.remove('active');
+            }
+
+            // Add active class to current partner
+            const currentActive = document.querySelector(`.chat-partner-item[data-user-id="${partnerId}"]`);
+            if (currentActive) {
+                currentActive.classList.add('active');
+            }
+
+            // Update chat header
+            document.getElementById('currentChatAvatar').textContent = partnerUsername[0].toUpperCase();
+            document.getElementById('currentChatUserName').textContent = partnerUsername;
+            document.getElementById('currentChatUserRole').textContent = partnerRole;
+
+            // Show chat window, hide "no chat selected" message
+            document.getElementById('noChatSelected').style.display = 'none';
+            document.getElementById('chatWindowContainer').style.display = 'flex';
+
+            // Clear previous messages and typing indicator
+            document.getElementById('messagesDisplay').innerHTML = '';
+            document.getElementById('typingIndicator').textContent = '';
+            document.getElementById('messageInput').value = '';
+
+            // Emit join_chat_room to the server
+            // The backend will determine the room_id and send `room_joined` back
+            socket.emit('join_chat_room', { target_user_id: partnerId });
+        }
+
+        async function loadMessageHistory(roomId) {
+            try {
+                const response = await fetch(`/api/messages/${roomId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const messages = await response.json();
+                const messagesDisplay = document.getElementById('messagesDisplay');
+                messagesDisplay.innerHTML = ''; // Clear existing messages
+                messages.forEach(msg => addMessageToDisplay(msg));
+                messagesDisplay.scrollTop = messagesDisplay.scrollHeight; // Scroll to bottom
+            } catch (error) {
+                console.error('Error loading message history:', error);
+            }
+        }
+
+        function addMessageToDisplay(data) {
+            const messagesDisplay = document.getElementById('messagesDisplay');
+            const isOwn = data.sender_id === CURRENT_USER.id;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+            
+            const time = new Date(data.timestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            messageDiv.innerHTML = `
+                ${!isOwn ? `<div class="message-sender">${data.sender_name}</div>` : ''}
+                <div class="message-content">${escapeHtml(data.message)}</div>
+                <div class="message-time">${time}</div>
+            `;
+            
+            messagesDisplay.appendChild(messageDiv);
+            messagesDisplay.scrollTop = messagesDisplay.scrollHeight;
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message || !currentChatRoomId) return;
+            
+            socket.emit('send_message', {
+                room_id: currentChatRoomId,
+                message: message
+            });
+            
+            messageInput.value = '';
+            stopTyping();
+        }
+
+        function handleMessageInputKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function handleTyping() {
+            if (!currentChatRoomId) return;
+
+            socket.emit('typing', {
+                room_id: currentChatRoomId,
+                is_typing: true
+            });
+            
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => stopTyping(), 2000);
+        }
+
+        function stopTyping() {
+            if (!currentChatRoomId) return;
+
+            socket.emit('typing', {
+                room_id: currentChatRoomId,
+                is_typing: false
+            });
+            document.getElementById('typingIndicator').textContent = ''; // Clear own typing indicator
+        }
+
+        function showTypingIndicator(username, isTyping) {
+            const indicator = document.getElementById('typingIndicator');
+            if (isTyping) {
+                indicator.textContent = `${username} is typing...`;
+            } else {
+                indicator.textContent = '';
+            }
+        }
+
+        // --- Help Request UI Functions ---
+        async function loadRequests() {
+            try {
+                const response = await fetch('/requests');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                activeRequests = await response.json();
+                renderRequests();
+            } catch (error) {
+                console.error('Error loading requests:', error);
+            }
+        }
+
+        function renderRequests() {
+            const requestsList = document.getElementById('requestsList');
+            requestsList.innerHTML = ''; // Clear existing requests
+
+            if (activeRequests.length === 0) {
+                requestsList.innerHTML = '<p style="padding: 10px; opacity: 0.7;">No requests found.</p>';
+                return;
+            }
+
+            activeRequests.forEach(req => {
+                const requestItem = document.createElement('div');
+                requestItem.className = 'request-item';
+                requestItem.setAttribute('data-request-id', req.id);
+
+                let assignedInfo = '';
+                if (req.assigned_volunteer_name) {
+                    assignedInfo = `Assigned to: ${req.assigned_volunteer_name}`;
+                }
+
+                requestItem.innerHTML = `
+                    <div class="request-item-header">
+                        <span>From: ${req.victim_name}</span>
+                        <span class="request-status status-${req.status}">${req.status}</span>
+                    </div>
+                    <div class="request-item-body">
+                        ${req.description}
+                        ${assignedInfo ? `<br><em>${assignedInfo}</em>` : ''}
+                        <br><small>Created: ${new Date(req.created_at).toLocaleString()}</small>
+                    </div>
+                    <div class="request-item-footer">
+                        ${CURRENT_USER.role === 'volunteer' && req.status === 'pending' ? 
+                            `<button class="request-btn accept" onclick="acceptRequest('${req.id}')">Accept</button>` : ''}
+                        ${CURRENT_USER.role === 'volunteer' && req.status === 'assigned' && req.assigned_volunteer_id === CURRENT_USER.id ? 
+                            `<button class="request-btn conflict" onclick="raiseConflict('${req.id}')">Raise Conflict</button>
+                             <button class="request-btn resolve" onclick="resolveRequest('${req.id}')">Resolve</button>` : ''}
+                        ${CURRENT_USER.role === 'admin' && req.status !== 'resolved' ? 
+                            `<button class="request-btn resolve" onclick="resolveRequest('${req.id}')">Resolve (Admin)</button>` : ''}
+                        ${(req.status === 'assigned' && (CURRENT_USER.id === req.victim_id || CURRENT_USER.id === req.assigned_volunteer_id)) ||
+                          (req.status === 'conflict' && (CURRENT_USER.id === req.assigned_volunteer_id || (CURRENT_USER.role === 'admin' && req.conflict_room_id))) ?
+                            `<button class="request-btn" onclick="openChatForRequest('${req.id}')">Open Chat</button>` : ''}
+                    </div>
+                `;
+                requestsList.appendChild(requestItem);
+            });
+        }
+
+        async function createHelpRequest() {
+            const description = document.getElementById('requestDescription').value.trim();
+            if (!description) {
+                alert('Please enter a description for your request.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/request/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: description })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message);
+                    document.getElementById('requestDescription').value = '';
+                    loadRequests(); // Refresh requests list
+                } else {
+                    alert('Error creating request: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error creating request:', error);
+                alert('An unexpected error occurred.');
+            }
+        }
+
+        async function acceptRequest(requestId) {
+            if (!confirm('Are you sure you want to accept this request?')) return;
+            try {
+                const response = await fetch(`/request/${requestId}/accept`, { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message);
+                    loadRequests(); // Refresh requests list
+                } else {
+                    alert('Error accepting request: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error accepting request:', error);
+                alert('An unexpected error occurred.');
+            }
+        }
+
+        async function resolveRequest(requestId) {
+            if (!confirm('Are you sure you want to resolve this request?')) return;
+            try {
+                const response = await fetch(`/request/${requestId}/resolve`, { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message);
+                    loadRequests(); // Refresh requests list
+                } else {
+                    alert('Error resolving request: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error resolving request:', error);
+                alert('An unexpected error occurred.');
+            }
+        }
+
+        async function raiseConflict(requestId) {
+            if (!confirm('Are you sure you want to raise a conflict for this request? This will open a chat with an admin.')) return;
+            try {
+                const response = await fetch(`/request/${requestId}/conflict`, { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message);
+                    loadRequests(); // Refresh requests list
+                } else {
+                    alert('Error raising conflict: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error raising conflict:', error);
+                alert('An unexpected error occurred.');
+            }
+        }
+
+        function openChatForRequest(requestId) {
+            const req = activeRequests.find(r => r.id === requestId);
+            if (!req) {
+                alert('Request not found.');
+                return;
+            }
+
+            let partnerId = null;
+            let partnerUsername = null;
+            let partnerRole = null;
+            let targetRoomId = null;
+
+            if (req.status === 'assigned' || req.status === 'resolved') {
+                if (CURRENT_USER.id === req.victim_id) {
+                    partnerId = req.assigned_volunteer_id;
+                    partnerUsername = req.assigned_volunteer_name;
+                    partnerRole = 'volunteer';
+                } else if (CURRENT_USER.id === req.assigned_volunteer_id) {
+                    partnerId = req.victim_id;
+                    partnerUsername = req.victim_name;
+                    partnerRole = 'victim';
+                }
+                // For direct victim-volunteer chats, the room ID is derived from their IDs
+                targetRoomId = getPrivateChatRoomId(req.victim_id, req.assigned_volunteer_id);
+            } else if (req.status === 'conflict') {
+                if (CURRENT_USER.id === req.assigned_volunteer_id) {
+                    // Volunteer opening conflict chat with admin
+                    // We need to find the admin who was assigned to the conflict
+                    // For now, let's assume the admin ID is part of the conflict_room_id or fetched.
+                    // A more robust solution would store the conflict admin ID in the request or emit it.
+                    // For simplicity, let's parse from room_id if available, or just open with a generic admin if multiple.
+                    const roomParts = req.conflict_room_id.split('_');
+                    const adminIdInRoom = roomParts[2] === CURRENT_USER.id ? roomParts[3] : roomParts[2];
+                    
+                    const adminPartner = onlineChatPartners.find(p => p.id === adminIdInRoom && p.role === 'admin');
+                    if (adminPartner) {
+                        partnerId = adminPartner.id;
+                        partnerUsername = adminPartner.username;
+                        partnerRole = 'admin';
+                    } else {
+                        alert('Assigned admin for conflict chat not found or offline.');
+                        return;
+                    }
+                } else if (CURRENT_USER.role === 'admin') {
+                    // Admin opening conflict chat with volunteer
+                    partnerId = req.assigned_volunteer_id;
+                    partnerUsername = req.assigned_volunteer_name;
+                    partnerRole = 'volunteer';
+                }
+                targetRoomId = req.conflict_room_id; // Use the specific conflict room ID
+            }
+
+            if (partnerId && partnerUsername && partnerRole) {
+                openChat(partnerId, partnerUsername, partnerRole);
+            } else {
+                alert('Cannot open chat for this request with current user role.');
+            }
+        }
+
+        // Helper to get the other user ID in a private room (for new message indicators)
+        function getOtherUserIdInRoom(roomId) {
+            const parts = roomId.split('_');
+            if (parts.length >= 4 && parts[0] === 'private' && parts[1] === 'chat') {
+                const user1 = parts[2];
+                const user2 = parts[3];
+                return user1 === CURRENT_USER.id ? user2 : user1;
+            }
+
+            if (parts.length >= 3 && parts[0] === 'conflict') {
+                const user1 = parts[1];
+                const user2 = parts[2];
+                return user1 === CURRENT_USER.id ? user2 : user1;
+            }
+
+            return null;
+        }
+
+        function getPrivateChatRoomId(user1Id, user2Id, prefix='private_chat') {
+            const sortedIds = [user1Id, user2Id].sort();
+            return `${prefix}_${sortedIds[0]}_${sortedIds[1]}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // --- Initial Setup ---
+        window.onload = () => {
+            socket.connect(); // Connect the socket when the page loads
+            renderChatPartners(); // Render initial list
+            loadRequests(); // Load initial requests
+            
+            // Periodically refresh requests list (e.g., every 30 seconds)
+            setInterval(loadRequests, 30000); 
+        };
+    </script>
+</body>
+</html>
