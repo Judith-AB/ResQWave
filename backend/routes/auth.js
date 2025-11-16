@@ -1,8 +1,11 @@
+// resqwave/backend/routes/auth.js
+
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import prisma from '../src/client.js';
+import prisma from '../src/client.js'; 
 
 const router = express.Router();
+
 
 router.post('/signup', async (req, res) => {
     const { fullName, contact, location, username, password, isMedicalCertified, skills } = req.body;
@@ -18,14 +21,14 @@ router.post('/signup', async (req, res) => {
         const newUser = await prisma.user.create({
             data: {
                 fullName,
-                contact: contact || null,
+                contact: contact || null, 
                 location: location || 'N/A',
                 username,
                 passwordHash,
                 skills: skills || null,
-                isVolunteer: true,
+                isVolunteer: true, 
                 isMedicalVerified: false,
-                status: 'Available',
+                status: 'Available', 
             },
         });
 
@@ -33,14 +36,14 @@ router.post('/signup', async (req, res) => {
             await prisma.proof.create({
                 data: {
                     userId: newUser.id,
-                    proofUrl: `Awaiting_Upload_for_User_${newUser.id}`,
+                    proofUrl: `Awaiting_Upload_for_User_${newUser.id}`, 
                     isVerified: false,
                 }
             });
         }
-        res.status(201).json({
-            message: "Volunteer registered successfully! Awaiting verification.",
-            userId: newUser.id
+        res.status(201).json({ 
+            message: "Volunteer registered successfully! Awaiting verification.", 
+            userId: newUser.id 
         });
 
     } catch (error) {
@@ -51,6 +54,7 @@ router.post('/signup', async (req, res) => {
         res.status(500).json({ message: "Failed to register volunteer." });
     }
 });
+
 
 
 router.post('/login', async (req, res) => {
@@ -77,19 +81,15 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: "Invalid username or password." });
         }
 
-       
         const isMatch = await bcrypt.compare(password, user.passwordHash);
 
         if (!isMatch) {
             return res.status(401).json({ message: "Invalid username or password." });
         }
-
-   
+        
+        let role = user.username === 'admin' ? 'admin' : 'volunteer'; 
+        
         const { passwordHash, ...userPayload } = user;
-
-        //  If username is 'admin', set role explicitly.
-        let role = user.username === 'admin' ? 'admin' : 'volunteer';
-
 
         res.status(200).json({
             message: "Login successful!",

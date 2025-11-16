@@ -27,10 +27,7 @@ const VolunteerSignInModal = ({ onClose, onSuccess }) => {
             const data = await response.json();
 
             if (response.ok && data.isVolunteer && data.role !== 'admin') {
-                localStorage.setItem("volunteerId", data.id);
-                localStorage.setItem("volunteerUsername", data.username);
-
-                onSuccess(data); 
+                onSuccess(data);
             } else {
                 setError(data.message || "Sign In failed. Check credentials or ensure you registered as a volunteer.");
             }

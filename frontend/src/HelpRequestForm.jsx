@@ -1,37 +1,67 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./index.css";
-import { useRequests } from "./context/RequestsContext";
-import { useChat } from "./context/ChatContext";
+import { useRequests } from "./context/RequestsContext"; 
+import { useChat } from "./context/ChatContext"; 
 import { useVolunteers } from "./context/VolunteerContext"; 
+import io from 'socket.io-client';
+const API_BASE_URL = "http://localhost:3001/api/requests"; 
+const SOCKET_SERVER_URL = "http://localhost:3001"; 
 
-const API_BASE_URL = "http://localhost:3001/api/requests";
+const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
 
-// --- Victim Status and Chat View Component ---
 const VictimStatusChat = ({ request, onClose }) => {
     const { getMessages, addMessage } = useChat();
     const { volunteers } = useVolunteers();
     const [inputText, setInputText] = useState('');
     const messages = getMessages(request.id);
 
-    // Find the assigned volunteer's name based on the local context 
     const assignedVolunteer = volunteers.find(v => v.id === request.assignedVolunteerId);
     const volunteerName = assignedVolunteer ? assignedVolunteer.fullName : 'A Volunteer';
+
+    useEffect(() => {
+        if (!socket.connected) {
+            socket.connect();
+        }
+        socket.emit('join_room', request.id); 
+
+        const messageListener = (data) => {
+            addMessage(data.roomId, data.sender, data.text);
+        };
+        socket.on('receive_message', messageListener);
+
+        
+        return () => {
+            socket.off('receive_message', messageListener);
+        };
+    }, [request.id, addMessage]); 
+
 
     const handleSend = (e) => {
         e.preventDefault();
         if (inputText.trim() === '') return;
-        addMessage(request.id, request.victimName, inputText.trim()); 
+        
+        const sender = request.victimName;
+        const messageText = inputText.trim();
+
+        const messageData = {
+            roomId: request.id,
+            sender: sender,
+            text: messageText,
+        };
+
+        socket.emit('send_message', messageData);
+        addMessage(request.id, sender, messageText); 
+
         setInputText('');
     };
 
     return (
         <div className="form-overlay" style={{ background: 'rgba(0, 0, 0, 0.6)' }}>
              <div className="form-container" style={{ width: '450px', padding: '0', overflow: 'hidden' }}>
-                 {/* Status Header */}
+
                 <div style={{ background: request.assignedVolunteerId ? '#4CAF50' : '#f44336', color: 'white', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
-                        {request.assignedVolunteerId ? `✅ Matched with ${volunteerName}` : `🚨 Request ID: ${request.id} Pending... (Score: ${request.urgencyScore.toFixed(2)})`}
+                        {request.assignedVolunteerId ? ` Matched with ${volunteerName}` : `🚨 Request ID: ${request.id} Pending... (Score: ${request.urgencyScore.toFixed(2)})`}
                     </h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>
                         &times;
@@ -47,7 +77,7 @@ const VictimStatusChat = ({ request, onClose }) => {
                     )}
                 </div>
                 
-                {/* Chat Area (Uses logic from ChatBox) */}
+               
                 <div style={{ height: '250px', overflowY: 'auto', padding: '1rem', background: '#f0f2f5' }}>
                     {messages.length === 0 && (
                         <p style={{ textAlign: 'center', color: '#666', marginTop: '10%' }}>Start the chat or wait for the volunteer to reach out.</p>
@@ -77,7 +107,6 @@ const VictimStatusChat = ({ request, onClose }) => {
                     ))}
                 </div>
 
-                {/* Input Area */}
                 <form onSubmit={handleSend} style={{ padding: '1rem', borderTop: '1px solid #ccc', display: 'flex' }}>
                     <input
                         type="text"
@@ -113,21 +142,30 @@ const HelpRequestForm = ({ onClose }) => {
         e.preventDefault();
         
         try {
+            // CRITICAL FIX: Ensure payload key matches DB field name ('victimName')
+            const payload = {
+                victimName: formData.name, 
+                contact: formData.contact,
+                location: formData.location,
+                emergencyType: formData.emergencyType,
+                details: formData.details,
+            };
+
             const response = await fetch(API_BASE_URL, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                // Use the real Request ID and Urgency Score returned by the backend
                 const newRequest = { 
                     ...formData, 
                     id: data.requestId, 
                     status: 'Pending', 
-                    urgencyScore: data.urgencyScore 
+                    urgencyScore: data.urgencyScore,
+                    victimName: formData.name, 
                 }; 
                 
                 addRequest(newRequest); 

@@ -16,9 +16,6 @@ const updateVolunteerStatus = async (volunteerId, newStatus) => {
     }
 };
 
-// -----------------------------------------------------------------
-// --- POST /api/assignments/admin-assign (Admin Action) ---
-// -----------------------------------------------------------------
 router.post('/admin-assign', async (req, res) => {
     const { requestId, volunteerId } = req.body;
 
@@ -28,7 +25,6 @@ router.post('/admin-assign', async (req, res) => {
             return res.status(409).json({ message: "Request is not in a Pending state for assignment." });
         }
 
-        // 1. Create the Assignment link 
         await prisma.assignment.create({
             data: {
                 requestId: requestId,
@@ -37,13 +33,11 @@ router.post('/admin-assign', async (req, res) => {
             }
         });
 
-        // 2. Update the Request status to 'Assigned'
         await prisma.request.update({
             where: { id: requestId },
             data: { status: 'Assigned' },
         });
 
-        // 3. Update the Volunteer's status to 'Busy'
         await updateVolunteerStatus(volunteerId, 'Busy');
 
         res.status(200).json({ message: `Request ${requestId} assigned successfully.` });
@@ -66,6 +60,7 @@ router.post('/accept-request', async (req, res) => {
         if (!request || request.status !== 'Pending') {
             return res.status(409).json({ message: "Request is no longer pending." });
         }
+
         await prisma.assignment.create({
             data: {
                 requestId: requestId,
@@ -92,19 +87,27 @@ router.post('/accept-request', async (req, res) => {
 });
 
 
+
 router.put('/decline/:id', async (req, res) => {
     const requestId = parseInt(req.params.id);
 
-
     try {
-      
-        await prisma.request.update({
+        
+        const updatedRequest = await prisma.request.update({
             where: { id: requestId },
             data: {
                 rejectionCount: { increment: 1 },
                 status: 'Pending' 
             },
         });
+
+
+        if (updatedRequest.rejectionCount >= 3) {
+            await prisma.request.update({
+                where: { id: requestId },
+                data: { status: 'Atmost' }, 
+            });
+        }
 
         res.status(200).json({ message: "Request declined. Rejection count incremented." });
     } catch (error) {
@@ -118,7 +121,6 @@ router.put('/conflict/:id', async (req, res) => {
     const requestId = parseInt(req.params.id);
 
     try {
-
         await prisma.request.update({
             where: { id: requestId },
             data: { status: 'Atmost' },
@@ -132,12 +134,14 @@ router.put('/conflict/:id', async (req, res) => {
 });
 
 
-
+// -----------------------------------------------------------------
+// --- PUT /api/assignments/complete/:id/volunteer (Volunteer Action) ---
+// -----------------------------------------------------------------
 router.put('/complete/:id/volunteer', async (req, res) => {
     const requestId = parseInt(req.params.id);
 
     try {
-    
+        // Mark completion flag by Volunteer
         await prisma.request.update({
             where: { id: requestId },
             data: { isResolvedByVolunteer: true },
@@ -150,11 +154,15 @@ router.put('/complete/:id/volunteer', async (req, res) => {
     }
 });
 
+
+// -----------------------------------------------------------------
+// --- PUT /api/assignments/resolve/:id/admin (Admin Final Resolution) ---
+// -----------------------------------------------------------------
 router.put('/resolve/:id/admin', async (req, res) => {
     const requestId = parseInt(req.params.id);
 
     try {
-
+        // 1. Set BOTH resolution flags to true and set status to 'Completed'
         await prisma.request.update({
             where: { id: requestId },
             data: {
@@ -164,6 +172,7 @@ router.put('/resolve/:id/admin', async (req, res) => {
             },
         });
 
+        // 2. Set the assigned volunteer's status back to 'Available'
         const assignment = await prisma.assignment.findFirst({
             where: { requestId: requestId },
             orderBy: { id: 'desc' }
@@ -181,8 +190,11 @@ router.put('/resolve/:id/admin', async (req, res) => {
 });
 
 
+// -----------------------------------------------------------------
+// --- GET /api/assignments/available-tasks (Fetch tasks for Volunteers) ---
+// -----------------------------------------------------------------
 router.get('/available-tasks', async (req, res) => {
-
+    // This route is called by the Volunteer Dashboard to show PENDING requests they can accept.
     try {
         const availableRequests = await prisma.request.findMany({
             where: { status: 'Pending' },

@@ -8,13 +8,12 @@ import VolunteerSignInModal from "./VolunteerSignInModal";
 
 import "./index.css";
 
-// *** REQUIRED CONTEXT HOOK IMPORTS ***
 import { useVolunteers } from "./context/VolunteerContext";
 import { useRequests } from "./context/RequestsContext";
 
 const API_BASE_URL = "http://localhost:3001/api/auth";
 
-// --- Volunteer Chooser Modal (Used by the 'Volunteer Portal' button) ---
+// --- Volunteer Chooser Modal ---
 const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
   <div className="form-overlay">
     <div className="form-container" style={{ width: '350px', textAlign: 'center', padding: '2rem' }}>
@@ -25,7 +24,7 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
           onClick={() => { onClose(); openSignIn(); }}
           style={{ background: 'linear-gradient(135deg, #4CAF50, #388E3C)', border: 'none' }}
         >
-          ✅ Sign In
+          ✅ Sign In / Check Status
         </button>
         <button
           className="btn-secondary"
@@ -39,28 +38,26 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
         type="button"
         className="btn-secondary"
         onClick={onClose}
-        style={{ marginTop: '1.5rem', width: '100%', background: '#ccc', color: '#333' }}
+        style={{ marginTop: '1.5rem', width: '100%', background: '#ff0101ff', color: '#f1f1f1ff' }}
       >
         Cancel
       </button>
     </div>
   </div>
 );
-// --- END Volunteer Chooser ---
 
 
-// --- LANDING PAGE COMPONENT ---
+
+
 const LandingPage = () => {
-  // CRITICAL FIX: Ensure useVolunteers is called inside the component function
   const { volunteers } = useVolunteers();
 
-  // Local State
   const [showHelpForm, setShowHelpForm] = useState(false);
-  const [showVolunteerForm, setShowVolunteerForm] = useState(false); // Sign Up Form
+  const [showVolunteerForm, setShowVolunteerForm] = useState(false);
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [showVolunteerChooser, setShowVolunteerChooser] = useState(false);
   const [showVolunteerSignIn, setShowVolunteerSignIn] = useState(false);
-  const [volunteerUser, setVolunteerUser] = useState(null); // Holds user data after successful login
+  const [volunteerUser, setVolunteerUser] = useState(null);
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -70,7 +67,6 @@ const LandingPage = () => {
   };
 
   useEffect(() => {
-    // ... (IntersectionObserver logic for scroll effects) ...
     const elements = document.querySelectorAll(".process-step, .stat-item");
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
@@ -91,16 +87,15 @@ const LandingPage = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Function run on successful Sign-In (CRITICAL FIX)
+  // Function run on successful Sign-In 
   const handleVolunteerSuccess = (userData) => {
-    // We rely ONLY on the validated data returned by the API to trigger the view change.
     if (userData && userData.id) {
-      setVolunteerUser(userData); // Saves the API data (ID, username, role)
-      setShowVolunteerSignIn(false); // Close the modal, triggering the view switch
+      setVolunteerUser(userData);
+      setShowVolunteerSignIn(false);
     }
   };
 
-  // Conditional rendering of the full Volunteer Dashboard (replaces landing page)
+  // Conditional rendering of the full Volunteer Dashboard 
   if (volunteerUser) {
     return <VolunteerDashboard onClose={() => setVolunteerUser(null)} user={volunteerUser} />;
   }
@@ -122,7 +117,7 @@ const LandingPage = () => {
           </ul>
 
           <div className="nav-buttons">
-            {/* Volunteer Portal Button (Green/Blue styling) */}
+
             <button
               className="btn-dashboard"
               onClick={() => setShowVolunteerChooser(true)}
@@ -161,7 +156,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* How It Works (Restored Content) */}
+      {/* How It Works, About, Footer */}
       <section id="how-it-works" className="how-it-works">
         <div className="section-container">
           <h2 className="section-title">How It Works</h2>
@@ -195,7 +190,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* About Section (Restored Content) */}
       <section id="about" className="about">
         <div className="section-container">
           <h2 className="section-title">About This Project</h2>
@@ -205,7 +199,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Footer (Restored Content with 112 update) */}
       <footer id="contact" className="footer">
         <div className="footer-container">
           <div>
@@ -226,17 +219,18 @@ const LandingPage = () => {
             <h3>Emergency Contact</h3>
             <div className="emergency-contact">
               <h4>24/7 Relief Helpline</h4>
-              <div className="emergency-phone">(+91) 6781234560</div>
+              <div className="emergency-phone">112</div>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* Forms and Modals  */}
+      {/* Forms and Modals */}
       {showHelpForm && <HelpRequestForm onClose={() => setShowHelpForm(false)} />}
       {showVolunteerForm && <VolunteerForm onClose={() => setShowVolunteerForm(false)} />}
       {showAdminForm && <AdminSignInForm onClose={() => setShowAdminForm(false)} />}
 
+      {/* RENDER VOLUNTEER CHOOSER */}
       {showVolunteerChooser && (
         <VolunteerChooser
           onClose={() => setShowVolunteerChooser(false)}
@@ -245,6 +239,7 @@ const LandingPage = () => {
         />
       )}
 
+      {/* RENDER VOLUNTEER SIGN-IN MODAL */}
       {showVolunteerSignIn && (
         <VolunteerSignInModal
           onClose={() => setShowVolunteerSignIn(false)}
