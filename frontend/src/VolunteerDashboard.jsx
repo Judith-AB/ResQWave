@@ -1,7 +1,13 @@
+// --- frontend/VolunteerDashboard.jsx ---
 import React, { useEffect, useState } from "react";
 import "./index.css";
-import ChatBox from './ChatBox'; 
+import ChatBox from './ChatBox';
+import io from 'socket.io-client';
+
 const API_ASSIGNMENT_URL = "http://localhost:3001/api/assignments";
+const SOCKET_SERVER_URL = "http://localhost:3001";
+
+const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
 
 
 const thStyle = { padding: "14px 20px", textAlign: "left", fontWeight: 600, fontSize: "14px", borderBottom: "1px solid #e2e8f0" };
@@ -31,10 +37,13 @@ const VolunteerDashboard = ({ onClose, user }) => {
   };
 
   const fetchData = () => {
-    fetch(`${API_ASSIGNMENT_URL}/available-tasks`)
+
+    fetch(`http://localhost:3001/api/requests/pending`)
       .then((res) => res.json())
       .then((data) => {
-        setRequests(data.requests || []);
+
+        const pendingTasks = data.requests.filter(req => req.status === 'Pending');
+        setRequests(pendingTasks || []);
         setLoading(false);
       })
       .catch((err) => {
@@ -45,9 +54,24 @@ const VolunteerDashboard = ({ onClose, user }) => {
 
   useEffect(() => {
     fetchData();
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+  
+    const statusChangeListener = (data) => {
+      if (data.status === 'Completed' || data.status === 'Conflict' || data.status === 'Assigned') {
+        refreshData();
+      }
+    };
+
+    socket.on('system_notification', statusChangeListener);
+
+    return () => {
+      socket.off('system_notification', statusChangeListener);
+    };
   }, []);
-
-
 
 
   const handleAccept = async (reqId) => {
@@ -60,16 +84,13 @@ const VolunteerDashboard = ({ onClose, user }) => {
       });
 
       if (response.ok) {
-        const acceptedRequest = requests.find(r => r.id === reqId);
+        setActiveChatRequest({
+          requestId: reqId,
+          participantName: user.fullName || user.username
+        });
 
-        if (acceptedRequest) {
-          setActiveChatRequest({
-            requestId: reqId,
-            participantName: user.fullName || user.username
-          });
-        }
         alert("Request accepted! Starting chat...");
-        refreshData();
+        refreshData(); 
       } else {
         const data = await response.json();
         alert(`Failed to accept request: ${data.message}`);
@@ -83,6 +104,7 @@ const VolunteerDashboard = ({ onClose, user }) => {
   const handleDecline = async (reqId) => {
     if (!confirm("Are you sure you want to decline this request?")) return;
     try {
+   
       const response = await fetch(`${API_ASSIGNMENT_URL}/decline/${reqId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -100,18 +122,6 @@ const VolunteerDashboard = ({ onClose, user }) => {
     }
   };
 
-  const handleConflict = async (reqId) => {
-    if (!confirm("Report conflict? This will flag the request as ATMOST URGENT for admin review and open a coordinator chat.")) return;
-    try {
-      await fetch(`${API_ASSIGNMENT_URL}/conflict/${reqId}`, {
-        method: "PUT",
-      });
-      alert("Conflict reported to admin! Opening coordinator chat...");
-      refreshData();
-    } catch (err) {
-      alert("Failed to report conflict.");
-    }
-  };
 
   if (loading) {
     return <div style={{ textAlign: "center", paddingTop: "50px", fontSize: "1.5rem" }}>Loading available tasks...</div>;
@@ -119,21 +129,20 @@ const VolunteerDashboard = ({ onClose, user }) => {
 
   return (
     <div style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", backgroundColor: "#f6f8fb", minHeight: "100vh", color: "#1e293b", margin: 0 }}>
-     
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", padding: "15px 30px", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "1.4rem" }}>
-          🛟 Volunteer Task Board ({user.fullName})
+          🛟 **Volunteer Task Board** ({user.fullName})
         </div>
-       
+
         <button onClick={onClose} style={{ border: 'none', background: 'none', color: '#f44336', cursor: 'pointer', fontWeight: 'bold' }}>LOG OUT</button>
       </div>
-
 
       <div style={{ maxWidth: "1100px", margin: "40px auto", padding: "0 20px" }}>
         <h2 style={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", marginBottom: "20px" }}>
           Pending Requests ({requests.length})
         </h2>
-       
+
         <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "12px", overflow: "hidden", boxShadow: "0 3px 10px rgba(0, 0, 0, 0.08)" }}>
           <thead>
             <tr style={{ backgroundColor: "#f8fafc", color: "#475569" }}>
@@ -166,7 +175,6 @@ const VolunteerDashboard = ({ onClose, user }) => {
                       </span>
                     </td>
                     <td style={tdStyle}>
-                      {/* Action buttons (Accept, Decline) */}
                       <button style={buttonAction("#22c55e")} onClick={() => handleAccept(req.id)}>Accept</button>
                       <button style={buttonAction("#ef4444")} onClick={() => handleDecline(req.id)}>Decline</button>
                     </td>
@@ -177,7 +185,6 @@ const VolunteerDashboard = ({ onClose, user }) => {
               <tr>
                 <td colSpan="5" style={{ textAlign: "center", padding: "30px 0", color: "#64748b", fontStyle: "italic" }}>
                   No pending requests.
-
                 </td>
               </tr>
             )}
@@ -185,7 +192,7 @@ const VolunteerDashboard = ({ onClose, user }) => {
         </table>
       </div>
 
-
+      {/* ChatBox is rendered outside the main flow as an overlay */}
       {activeChatRequest && (
         <ChatBox
           requestId={activeChatRequest.requestId}

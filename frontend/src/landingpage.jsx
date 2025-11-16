@@ -1,19 +1,20 @@
+// --- frontend/LandingPage.jsx ---
 import React, { useState, useEffect } from "react";
 import HelpRequestForm from "./HelpRequestForm";
-import VolunteerForm from "./VolunteerForm";
-import AdminSignInForm from "./AdminSignInForm";
-import ChatBox from "./ChatBox";
+import VolunteerForm from "./VolunteerForm"; // Assuming volunteer signup form component exists
+import AdminSignInForm from "./AdminSignInForm"; // Assuming admin sign-in component exists
 import VolunteerDashboard from "./VolunteerDashboard.jsx";
-import VolunteerSignInModal from "./VolunteerSignInModal";
+import VolunteerSignInModal from "./VolunteerSignInModal"; // Assuming volunteer sign-in modal exists
 
 import "./index.css";
 
+// NOTE: We don't strictly need these imports if we don't use their state here, 
+// but we include them based on your provided context usage.
 import { useVolunteers } from "./context/VolunteerContext";
 import { useRequests } from "./context/RequestsContext";
 
-const API_BASE_URL = "http://localhost:3001/api/auth";
-
-// --- Volunteer Chooser Modal ---
+// --- Volunteer Chooser Modal Component ---
+// This acts as a routing selection for volunteers
 const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
   <div className="form-overlay">
     <div className="form-container" style={{ width: '350px', textAlign: 'center', padding: '2rem' }}>
@@ -38,7 +39,7 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
         type="button"
         className="btn-secondary"
         onClick={onClose}
-        style={{ marginTop: '1.5rem', width: '100%', background: '#ff0101ff', color: '#f1f1f1ff' }}
+        style={{ marginTop: '1.5rem', width: '100%', background: '#f44336', color: '#f1f1f1' }}
       >
         Cancel
       </button>
@@ -47,17 +48,16 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
 );
 
 
-
-
 const LandingPage = () => {
-  const { volunteers } = useVolunteers();
+  // NOTE: This state is used for the volunteer dashboard conditional rendering
+  // const { volunteers } = useVolunteers(); 
 
   const [showHelpForm, setShowHelpForm] = useState(false);
-  const [showVolunteerForm, setShowVolunteerForm] = useState(false);
+  const [showVolunteerForm, setShowVolunteerForm] = useState(false); // Signup
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [showVolunteerChooser, setShowVolunteerChooser] = useState(false);
   const [showVolunteerSignIn, setShowVolunteerSignIn] = useState(false);
-  const [volunteerUser, setVolunteerUser] = useState(null);
+  const [volunteerUser, setVolunteerUser] = useState(null); // Holds user data if signed in
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -87,7 +87,7 @@ const LandingPage = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Function run on successful Sign-In 
+  // Function run on successful Volunteer Sign-In 
   const handleVolunteerSuccess = (userData) => {
     if (userData && userData.id) {
       setVolunteerUser(userData);
@@ -95,7 +95,7 @@ const LandingPage = () => {
     }
   };
 
-  // Conditional rendering of the full Volunteer Dashboard 
+
   if (volunteerUser) {
     return <VolunteerDashboard onClose={() => setVolunteerUser(null)} user={volunteerUser} />;
   }
@@ -117,7 +117,6 @@ const LandingPage = () => {
           </ul>
 
           <div className="nav-buttons">
-
             <button
               className="btn-dashboard"
               onClick={() => setShowVolunteerChooser(true)}
@@ -143,7 +142,7 @@ const LandingPage = () => {
             </p>
             <div className="hero-buttons">
               <button className="btn-primary" onClick={() => setShowHelpForm(true)}>❤️ Request Help</button>
-              <button className="btn-secondary" onClick={() => setShowVolunteerForm(true)}>🤝 Join as Volunteer</button>
+              <button className="btn-secondary" onClick={() => setShowVolunteerChooser(true)}>🤝 Join as Volunteer</button>
             </div>
           </div>
 
@@ -156,7 +155,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* How It Works, About, Footer */}
+      {/* How It Works Section */}
       <section id="how-it-works" className="how-it-works">
         <div className="section-container">
           <h2 className="section-title">How It Works</h2>
@@ -190,6 +189,7 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* About and Footer Section */}
       <section id="about" className="about">
         <div className="section-container">
           <h2 className="section-title">About This Project</h2>
@@ -225,7 +225,7 @@ const LandingPage = () => {
         </div>
       </footer>
 
-      {/* Forms and Modals */}
+      {/* --- Forms and Modals Rendering --- */}
       {showHelpForm && <HelpRequestForm onClose={() => setShowHelpForm(false)} />}
       {showVolunteerForm && <VolunteerForm onClose={() => setShowVolunteerForm(false)} />}
       {showAdminForm && <AdminSignInForm onClose={() => setShowAdminForm(false)} />}
