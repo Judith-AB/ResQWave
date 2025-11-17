@@ -1,18 +1,20 @@
-// --- frontend/AdminDashboard.jsx ---
+// --- frontend/AdminDashboard.jsx (FINAL, COMPLETE CODE) ---
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import ChatBox from './ChatBox';
 import io from 'socket.io-client';
 import './index.css';
-
+// NOTE: Assume helper components (CheckCircle, LogOut, etc.) are defined or imported
 
 const REQUEST_API_URL = "http://localhost:3001/api/requests";
 const ASSIGNMENT_API_URL = "http://localhost:3001/api/assignments";
+const API_AUTH_URL = "http://localhost:3001/api/auth"; // For verification
 const SOCKET_SERVER_URL = "http://localhost:3001";
 
+// Initialize socket client
 const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
 
-
+// Helper components and functions (Simplified)
 const CheckCircle = () => <span style={{ color: '#4CAF50', marginRight: '5px' }}>✅</span>;
 const LogOut = () => <span style={{ color: 'white', fontWeight: 'bold' }}>⏏</span>;
 const ChatIcon = () => <span style={{ color: 'white', fontSize: '1.2em' }}>💬</span>;
@@ -62,6 +64,7 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
+            // Fetches all active requests (Pending, Assigned, Conflict, Atmost) and all volunteers
             const response = await fetch(`${REQUEST_API_URL}/pending`);
             const data = await response.json();
 
@@ -81,19 +84,18 @@ const AdminDashboard = () => {
     useEffect(() => {
         fetchData();
 
-       
+        // --- SOCKET.IO SETUP FOR ADMIN ALERTS ---
         if (!socket.connected) {
             socket.connect();
         }
+        // Admin joins the dedicated alert room to receive conflict broadcasts
         socket.emit('join_room', 'admin_room');
 
         const adminAlertListener = (data) => {
-            console.warn("Real-time Conflict Alert:", data);
-
             setConflictAlert(data);
-
-            refreshData(); 
-            setActiveChat({ requestId: data.requestId, senderName: 'Admin' }); 
+            refreshData(); // Updates request list status immediately
+            // Opens chat for Admin to intervene instantly
+            setActiveChat({ requestId: data.requestId, senderName: 'Admin' });
         };
 
         socket.on('new_conflict_alert', adminAlertListener);
@@ -104,7 +106,7 @@ const AdminDashboard = () => {
     }, []);
 
 
-  
+    // --- ACTION HANDLERS ---
 
     const handleAssign = async (requestId, volId) => {
         const volunteerId = parseInt(volId);
@@ -116,7 +118,7 @@ const AdminDashboard = () => {
         if (!window.confirm(`Assign Request #${requestId} to Volunteer ID ${volunteerId}?`)) return;
 
         try {
-     
+            // Triggers backend assignment logic which emits real-time notification
             const response = await fetch(`${ASSIGNMENT_API_URL}/admin-assign`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -137,10 +139,10 @@ const AdminDashboard = () => {
     };
 
     const handleComplete = async (requestId) => {
-     
+        // Confirmation Modal for Admin Override
         if (!window.confirm("ADMIN OVERRIDE: Are you sure you want to mark this request as RESOLVED? This confirms mutual resolution and resets the assigned volunteer's status.")) return;
         try {
-        
+            // Triggers Admin Manual Resolution endpoint
             const response = await fetch(`${ASSIGNMENT_API_URL}/resolve/${requestId}/admin`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -158,7 +160,31 @@ const AdminDashboard = () => {
         }
     };
 
+    // --- MEDICAL PROOF VERIFICATION HANDLER ---
+    const handleVerifyMedical = async (userId) => {
+        // In a real app, this would open a modal to view the proof file (proofUrl)
+        if (!window.confirm(`Verify medical certification for User ID ${userId}? This will grant access to medical tasks.`)) return;
 
+        try {
+            // PUT call to the new verification route
+            const response = await fetch(`${API_AUTH_URL}/verify-medical/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                alert(`Volunteer ${userId} verified successfully!`);
+            } else {
+                alert('Verification failed on server.');
+            }
+            refreshData(); // Reload the dashboard data
+        } catch (error) {
+            alert("Network error during verification.");
+        }
+    };
+
+
+    // --- DATA CALCULATIONS ---
 
     const totalRequests = requests.length;
     const conflictRequests = requests.filter(r => r.status === 'Conflict' || r.status === 'Atmost').length;
@@ -171,7 +197,6 @@ const AdminDashboard = () => {
 
         if (assignment && (req.status === 'Assigned' || req.status === 'Atmost' || req.status === 'Conflict')) {
             const volunteer = assignment.volunteer;
-         
             const acceptedStatus = assignment.isAccepted ? 'Accepted' : 'Pending Acceptance';
             return `${volunteer?.fullName || 'Assigned'} (${acceptedStatus})`;
         }
@@ -193,7 +218,7 @@ const AdminDashboard = () => {
                 <button onClick={logoutAdmin} className="btn-help" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #d32f2f, #b71c1c)' }}><LogOut /> LOG OUT</button>
             </header>
 
-            
+            {/* REAL-TIME CONFLICT ALERT BANNER */}
             {conflictAlert && (
                 <div
                     style={{
@@ -210,7 +235,7 @@ const AdminDashboard = () => {
                 </div>
             )}
 
-        
+            {/* STAT CARDS */}
             <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
                 <StatCard title="Total Active" value={totalRequests} color="#f44336" icon="❤️" />
                 <StatCard title="Assigned / Active" value={assignedRequests} color="#FF9800" icon="⏳" />
@@ -226,6 +251,8 @@ const AdminDashboard = () => {
                     <button onClick={() => setActiveTab('volunteers')} style={{ padding: '0.75rem 1.5rem', fontSize: '1.1rem', fontWeight: '700', cursor: 'pointer', border: 'none', background: 'none', borderBottom: activeTab === 'volunteers' ? '4px solid #4CAF50' : '4px solid transparent', color: activeTab === 'volunteers' ? '#4CAF50' : '#666', transition: 'all 0.3s ease' }}>Volunteers</button>
                 </div>
 
+
+                {/* Requests Tab */}
                 {activeTab === 'requests' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                         {requests.length === 0 && <p style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>No active help requests right now.</p>}
@@ -281,7 +308,6 @@ const AdminDashboard = () => {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                 <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#333' }}>Assign Volunteer:</label>
                                                 <select
-                                                    // Use local state to store the selection before clicking the button
                                                     onChange={(e) => setSelectedVolunteer(prev => ({ ...prev, [req.id]: e.target.value }))}
                                                     value={selectedVolunteer[req.id] || ""}
                                                     style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ccc', minWidth: '150px' }}
@@ -328,7 +354,51 @@ const AdminDashboard = () => {
 
                 {/* Volunteers Tab */}
                 {activeTab === 'volunteers' && (
-                    <div style={{ padding: '1.5rem 0' }}>{/* ... Volunteer list rendering ... */}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', padding: '1.5rem 0' }}>
+                        {volunteers.map(v => {
+                            // Determine if proof needs review
+                            const needsProofReview = v.proofs && v.proofs.length > 0 && !v.isMedicalVerified;
+
+                            return (
+                                <div key={v.id} style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)', borderLeft: `6px solid ${v.isMedicalVerified ? '#4CAF50' : (needsProofReview ? '#FF9800' : (v.status === 'Available' ? '#2196F3' : '#FF9800'))}`, transition: 'box-shadow 0.2s ease', cursor: 'default' }}>
+                                    <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#333' }}><UserIcon />{v.fullName}</h4>
+                                    <p style={{ fontSize: '0.9rem', color: '#666', margin: '5px 0' }}>Location: {v.location} | Contact: {v.contact}</p>
+                                    <p style={{ fontSize: '0.9rem', color: '#1565C0', fontWeight: '600', marginBottom: '1rem' }}>Expertise: **{v.skills || 'N/A'}**</p>
+
+                                    <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', background: v.status === 'Available' ? '#e8f5e9' : '#fff3e0', color: v.status === 'Available' ? '#2e7d32' : '#ef6c00' }}>
+                                            {v.status || 'Available'}
+                                        </span>
+                                        {v.isMedicalVerified ? (
+                                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', color: '#fff', fontWeight: '700', background: '#4CAF50' }}>
+                                                MEDICALLY VERIFIED
+                                            </span>
+                                        ) : needsProofReview ? (
+                                            // Show verification button ONLY if proof record exists and status is unverified
+                                            <button
+                                                onClick={() => handleVerifyMedical(v.id)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    background: '#FF9800',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '700',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                VERIFY PROOF 📋
+                                            </button>
+                                        ) : (
+                                            // Default state for general volunteers who haven't submitted anything
+                                            <span style={{ fontSize: '0.8rem', color: '#999' }}>General Access</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
 

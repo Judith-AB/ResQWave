@@ -116,7 +116,7 @@ body {
   padding: 0.5rem 1rem;
   background: transparent;
   border: 2px solid #4CAF50;
-  color:#4CAF50;
+  color: #4CAF50;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
@@ -226,6 +226,52 @@ body {
   box-shadow: 0 10px 30px rgba(76, 175, 80, 0.4);
 }
 
+
+/* --- NEW STYLE: Resume Help Button (Purple/Indigo) --- */
+.btn-resume-help {
+  /* Base style: Transparent background, purple border, purple text */
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 2px solid #5E35B1;
+  /* Base Purple/Indigo border */
+  color: #5E35B1;
+  /* Base Purple/Indigo text */
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-resume-help:hover {
+  /* Hover state: Fills with purple, text turns white */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(94, 53, 177, 0.3);
+  /* Soft glow */
+  background: #5E35B1;
+  /* Fills solid purple */
+  color: white;
+  /* Text turns white (Targeted fix) */
+}
+
+.btn-volunteer-portal {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 2px solid #4CAF50;
+  color: #4CAF50;
+  /* Base color is green */
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Ensure the hover state is also present for the white-text effect */
+.btn-volunteer-portal:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+  background: #6bce70;
+  color: white;
+}
 
 
 .hero-image img {

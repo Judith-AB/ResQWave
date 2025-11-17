@@ -1,169 +1,232 @@
 // --- resqwave/backend/routes/requests.js ---
 import express from 'express';
-import prisma from '../src/client.js'; 
+import prisma from '../src/client.js';
 import Groq from 'groq-sdk';
 import 'dotenv/config';
 
 const router = express.Router();
 const getGroqClient = () => {
-    if (!process.env.GROQ_API_KEY) {
-        console.warn("GROQ_API_KEY is missing. Using rule-based fallback score.");
-        return null;
-    }
-    
-    return new Groq({ apiKey: process.env.GROQ_API_KEY }); 
+    if (!process.env.GROQ_API_KEY) {
+        console.warn("GROQ_API_KEY is missing. Using rule-based fallback score.");
+        return null;
+    }
+
+    return new Groq({ apiKey: process.env.GROQ_API_KEY });
 };
 const groq = getGroqClient();
 
 
 
 const originalCalculateUrgencyScore = (emergencyType) => {
-    let score = 0;
+    let score = 0;
 
-    switch (emergencyType.toLowerCase()) {
-        case 'medical':
-        case 'rescue':
-            score = 9.5;
-            break;
-        case 'shelter':
-        case 'transportation':
-            score = 7.0;
-            break;
-        case 'food':
-        case 'water':
-        case 'flooding':
-        case 'missing':
-            score = 5.5;
-            break;
-        case 'electricity':
-        case 'other':
-        default:
-            score = 3.0;
-            break;
-    }
+    switch (emergencyType.toLowerCase()) {
+        case 'medical':
+        case 'rescue':
+            score = 9.5;
+            break;
+        case 'shelter':
+        case 'transportation':
+            score = 7.0;
+            break;
+        case 'food':
+        case 'water':
+        case 'flooding':
+        case 'missing':
+            score = 5.5;
+            break;
+        case 'electricity':
+        case 'other':
+        default:
+            score = 3.0;
+            break;
+    }
 
-    return parseFloat((score + Math.random() * 0.5).toFixed(2));
+    return parseFloat((score + Math.random() * 0.5).toFixed(2));
 };
 
 const calculateUrgencyScore = async (emergencyType, details) => {
 
-    if (!groq) return originalCalculateUrgencyScore(emergencyType);
+    if (!groq) return originalCalculateUrgencyScore(emergencyType);
 
-    try {
-        const prompt = `Analyze this emergency situation and rate its urgency on a scale of 1-10, where 10 is most urgent.
+    try {
+        const prompt = `Analyze this emergency situation and rate its urgency on a scale of 1-10, where 10 is most urgent.
         Emergency Type: ${emergencyType}
         Details: ${details}
         Respond only with a number between 1 and 10.`;
 
-        const completion = await groq.chat.completions.create({
-            messages: [{ role: "user", content: prompt }],
-            model: "openai/gpt-oss-120b", 
-            temperature: 0.3,
-            max_tokens: 10
-        });
+        const completion = await groq.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            model: "openai/gpt-oss-120b",
+            temperature: 0.3,
+            max_tokens: 10
+        });
 
-        const score = parseFloat(completion.choices[0].message.content.trim());
+        const score = parseFloat(completion.choices[0].message.content.trim());
 
-        if (isNaN(score) || score < 1 || score > 10) {
-            return originalCalculateUrgencyScore(emergencyType);
-        }
+        if (isNaN(score) || score < 1 || score > 10) {
+            return originalCalculateUrgencyScore(emergencyType);
+        }
 
-        return score;
+        return score;
 
-    } catch (error) {
-        console.error('Groq API Error:', error);
-        return originalCalculateUrgencyScore(emergencyType);
-    }
+    } catch (error) {
+        console.error('Groq API Error:', error);
+        return originalCalculateUrgencyScore(emergencyType);
+    }
 };
 
 
 router.post('/', async (req, res) => {
-    const { victimName, contact, location, emergencyType, details } = req.body;
+    const { victimName, contact, location, emergencyType, details } = req.body;
 
-    if (!victimName || !location || !emergencyType) { 
-        return res.status(400).json({ message: "Missing required request fields." });
-    }
+    if (!victimName || !location || !emergencyType) {
+        return res.status(400).json({ message: "Missing required request fields." });
+    }
 
-    try {
-        
-        const urgencyScore = await calculateUrgencyScore(emergencyType, details || '');
+    try {
 
-        const newRequest = await prisma.request.create({
-            data: {
-                victimName: victimName,
-                contact: contact,
-                location: location,
-                emergencyType: emergencyType,
-                details: details || '',
-                urgencyScore: urgencyScore,
-                status: 'Pending',
-                
-                isResolvedByVictim: false, 
-                isResolvedByVolunteer: false, 
-            }
-        });
+        const urgencyScore = await calculateUrgencyScore(emergencyType, details || '');
 
-        res.status(201).json({
-            message: "Help request submitted successfully.",
-            requestId: newRequest.id, // Prisma returns the ID
-            urgencyScore: newRequest.urgencyScore
-        });
+        const newRequest = await prisma.request.create({
+            data: {
+                victimName: victimName,
+                contact: contact,
+                location: location,
+                emergencyType: emergencyType,
+                details: details || '',
+                urgencyScore: urgencyScore,
+                status: 'Pending',
 
-    } catch (error) {
-        console.error('Request Submission Error:', error);
-        res.status(500).json({ message: "Failed to submit request." });
-    }
+                isResolvedByVictim: false,
+                isResolvedByVolunteer: false,
+            }
+        });
+
+        res.status(201).json({
+            message: "Help request submitted successfully.",
+            requestId: newRequest.id, // Prisma returns the ID
+            urgencyScore: newRequest.urgencyScore
+        });
+
+    } catch (error) {
+        console.error('Request Submission Error:', error);
+        res.status(500).json({ message: "Failed to submit request." });
+    }
 });
 
+// Route to fetch pending requests (for Admin Dashboard)
 router.get('/pending', async (req, res) => {
-    try {
-        
-        const pendingRequests = await prisma.request.findMany({
-            where: {
-                status: {
-                   
-                    in: ['Pending', 'Assigned', 'Atmost', 'Conflict'] 
-                }
-            },
-            orderBy: {
-                urgencyScore: 'desc',
-            },
-          
-            include: {
-                assignments: {
-                    orderBy: { id: 'desc' },
-                    take: 1,
-                    include: {
-                        volunteer: {
-                            select: { fullName: true, id: true, isMedicalVerified: true, skills: true }
-                        }
-                    }
-                }
-            }
-        });
+    try {
+        const pendingRequests = await prisma.request.findMany({
+            where: {
+                status: {
+                    in: ['Pending', 'Assigned', 'Atmost', 'Conflict']
+                }
+            },
+            orderBy: {
+                urgencyScore: 'desc',
+            },
+            include: {
+                assignments: {
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                    include: {
+                        volunteer: {
+                            select: { fullName: true, id: true, isMedicalVerified: true, skills: true }
+                        }
+                    }
+                }
+            }
+        });
 
-        const volunteers = await prisma.user.findMany({
-            where: { isVolunteer: true },
-            select: {
-                id: true,
-                fullName: true,
-                contact: true,
-                skills: true,
-                isMedicalVerified: true,
-                location: true,
-                status: true, 
-            }
-        });
+        const volunteers = await prisma.user.findMany({
+            where: { isVolunteer: true },
+            select: {
+                id: true,
+                fullName: true,
+                contact: true,
+                skills: true,
+                isMedicalVerified: true,
+                location: true,
+                status: true,
+                // --- NEW: FETCH PENDING PROOF STATUS ---
+                proofs: {
+                    where: { isVerified: false }, // Only grab proof records waiting for review
+                    select: { proofUrl: true, isVerified: true },
+                    take: 1
+                }
+                // ------------------------------------
+            }
+        });
 
-        res.status(200).json({
-            requests: pendingRequests,
-            volunteers: volunteers
-        });
+        res.status(200).json({
+            requests: pendingRequests,
+            volunteers: volunteers
+        });
 
-    } catch (error) {
-        console.error('Fetch Pending Requests Error:', error);
-        res.status(500).json({ message: "Failed to fetch pending requests." });
-    }
+    } catch (error) {
+        console.error('Fetch Pending Requests Error:', error);
+        res.status(500).json({ message: "Failed to fetch pending requests." });
+    }
+});
+router.post('/lookup', async (req, res) => {
+    // Input can now contain requestId (numeric) OR contact/location (strings)
+    const { requestId, contact, location } = req.body;
+
+    // Ensure at least one primary identifier is present
+    if (!requestId && !contact) {
+        return res.status(400).json({ message: "Request ID or Contact number is required for lookup." });
+    }
+
+    try {
+        let request;
+
+        if (requestId) {
+            // SCENARIO 1: Look up directly by ID (fastest)
+            const id = parseInt(requestId);
+            request = await prisma.request.findUnique({
+                where: { id: id },
+                select: { id: true, victimName: true, contact: true, status: true, emergencyType: true, urgencyScore: true, details: true },
+            });
+
+            // CRITICAL VERIFICATION: If ID is provided, contact MUST still match for security
+            if (request && request.contact !== contact) {
+                return res.status(401).json({ message: "ID found, but contact mismatch. Please check details." });
+            }
+
+        } else if (contact) {
+            // SCENARIO 2: Search by Contact (most resilient)
+            // Finds the most recent non-completed request matching the contact
+            request = await prisma.request.findFirst({
+                where: {
+                    contact: contact,
+                    status: { notIn: ['Completed'] }
+                },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, victimName: true, contact: true, status: true, emergencyType: true, urgencyScore: true, details: true },
+            });
+        }
+
+        if (!request) {
+            return res.status(404).json({ message: "No active request found for these details." });
+        }
+
+        // Final Status Check
+        if (request.status === 'Completed') {
+            return res.status(409).json({ message: "This request has already been marked as completed." });
+        }
+
+        // Return the full request details
+        res.status(200).json({
+            message: `Active request #${request.id} found.`,
+            request: request
+        });
+
+    } catch (error) {
+        console.error('Request Lookup Error:', error);
+        res.status(500).json({ message: "Failed to look up request." });
+    }
 });
 
 export default router;

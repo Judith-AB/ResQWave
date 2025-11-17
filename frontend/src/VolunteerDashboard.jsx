@@ -25,16 +25,20 @@ const getUrgencyStyle = (score) => {
 };
 
 const VolunteerDashboard = ({ onClose, user }) => {
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequests] = useState([]); // List of PENDING tasks
+  const [myActiveAssignment, setMyActiveAssignment] = useState(null); // The single accepted task
   const [loading, setLoading] = useState(true);
   const [activeChatRequest, setActiveChatRequest] = useState(null);
 
   const volunteerId = user.id;
+  const isVolunteerMedicallyVerified = user.isMedicalVerified;
 
   const refreshData = () => {
     setLoading(true);
     fetchData();
+    fetchActiveAssignment(); // Always fetch the active task on refresh
   };
+
 
   const fetchData = () => {
 
@@ -42,8 +46,22 @@ const VolunteerDashboard = ({ onClose, user }) => {
       .then((res) => res.json())
       .then((data) => {
 
-        const pendingTasks = data.requests.filter(req => req.status === 'Pending');
-        setRequests(pendingTasks || []);
+        const availableTasks = data.requests.filter(req => {
+
+          const isMedicalRequest = req.emergencyType.toLowerCase().includes('medical');
+
+          if (req.status !== 'Pending') {
+            return false;
+          }
+
+          if (isMedicalRequest && !isVolunteerMedicallyVerified) {
+            return false;
+          }
+
+          return true;
+        });
+
+        setRequests(availableTasks || []);
         setLoading(false);
       })
       .catch((err) => {
@@ -52,16 +70,30 @@ const VolunteerDashboard = ({ onClose, user }) => {
       });
   };
 
+
+  const fetchActiveAssignment = () => {
+
+    fetch(`${API_ASSIGNMENT_URL}/my-active-task/${volunteerId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setMyActiveAssignment(data.activeRequest);
+      })
+      .catch((err) => {
+        console.error("Error fetching active assignment:", err);
+      });
+  };
+
+
   useEffect(() => {
     fetchData();
+    fetchActiveAssignment(); 
 
     if (!socket.connected) {
       socket.connect();
     }
 
-  
     const statusChangeListener = (data) => {
-      if (data.status === 'Completed' || data.status === 'Conflict' || data.status === 'Assigned') {
+      if (data.status === 'Completed' || data.status === 'Conflict' || data.status === 'Assigned' || data.status === 'Pending') {
         refreshData();
       }
     };
@@ -74,6 +106,8 @@ const VolunteerDashboard = ({ onClose, user }) => {
   }, []);
 
 
+
+
   const handleAccept = async (reqId) => {
     if (!confirm("Are you sure you want to accept this task?")) return;
     try {
@@ -84,14 +118,14 @@ const VolunteerDashboard = ({ onClose, user }) => {
       });
 
       if (response.ok) {
+     
         setActiveChatRequest({
           requestId: reqId,
           participantName: user.fullName || user.username
         });
 
         alert("Request accepted! Starting chat...");
-        refreshData(); 
-      } else {
+        refreshData();
         const data = await response.json();
         alert(`Failed to accept request: ${data.message}`);
       }
@@ -104,7 +138,6 @@ const VolunteerDashboard = ({ onClose, user }) => {
   const handleDecline = async (reqId) => {
     if (!confirm("Are you sure you want to decline this request?")) return;
     try {
-   
       const response = await fetch(`${API_ASSIGNMENT_URL}/decline/${reqId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -120,6 +153,13 @@ const VolunteerDashboard = ({ onClose, user }) => {
     } catch (err) {
       alert("Failed to connect to server during decline.");
     }
+  };
+
+  const handleResumeChat = (reqId) => {
+    setActiveChatRequest({
+      requestId: reqId,
+      participantName: user.fullName || user.username
+    });
   };
 
 
@@ -139,6 +179,28 @@ const VolunteerDashboard = ({ onClose, user }) => {
       </div>
 
       <div style={{ maxWidth: "1100px", margin: "40px auto", padding: "0 20px" }}>
+
+        {myActiveAssignment && (
+          <div style={{ padding: '20px', marginBottom: '40px', borderRadius: '12px', background: '#e0f7fa', border: '2px solid #00bcd4', boxShadow: '0 4px 10px rgba(0, 188, 212, 0.2)' }}>
+            <h3 style={{ margin: 0, color: '#00838f', borderBottom: '1px solid #b2ebf2', paddingBottom: '10px' }}>
+              ⭐ **Your Active Assignment** - Request #{myActiveAssignment.id}
+            </h3>
+            <p style={{ marginTop: '10px', fontWeight: 'bold' }}>
+              {myActiveAssignment.emergencyType} in {myActiveAssignment.location} (Score: {myActiveAssignment.urgencyScore?.toFixed(2)})
+            </p>
+            <p style={{ fontStyle: 'italic', color: '#555' }}>
+              Details: "{myActiveAssignment.details}"
+            </p>
+            <button
+              onClick={() => handleResumeChat(myActiveAssignment.id)}
+              style={buttonAction('#00bcd4')}
+            >
+              RESUME CHAT / PROVIDE UPDATE
+            </button>
+          </div>
+        )}
+
+
         <h2 style={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", marginBottom: "20px" }}>
           Pending Requests ({requests.length})
         </h2>
@@ -157,6 +219,7 @@ const VolunteerDashboard = ({ onClose, user }) => {
             {requests.length > 0 ? (
               requests.map((req) => {
                 const urgency = getUrgencyStyle(req.urgencyScore);
+                const isMedical = req.emergencyType.toLowerCase().includes('medical');
 
                 return (
                   <tr key={req.id} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s" }}
@@ -170,11 +233,16 @@ const VolunteerDashboard = ({ onClose, user }) => {
                     </td>
                     <td style={tdStyle}>{req.location}</td>
                     <td style={tdStyle}>
+                     
+                      {isMedical && (
+                        <small style={{ color: '#d32f2f', fontWeight: 'bold' }}>[MEDICAL TASK] </small>
+                      )}
                       <span style={{ fontWeight: 600, padding: "4px 10px", borderRadius: "12px", fontSize: "13px", background: urgency.background, color: urgency.color }}>
                         {req.urgencyScore?.toFixed(1)} - {urgency.label}
                       </span>
                     </td>
                     <td style={tdStyle}>
+                    
                       <button style={buttonAction("#22c55e")} onClick={() => handleAccept(req.id)}>Accept</button>
                       <button style={buttonAction("#ef4444")} onClick={() => handleDecline(req.id)}>Decline</button>
                     </td>
@@ -192,7 +260,7 @@ const VolunteerDashboard = ({ onClose, user }) => {
         </table>
       </div>
 
-      {/* ChatBox is rendered outside the main flow as an overlay */}
+    
       {activeChatRequest && (
         <ChatBox
           requestId={activeChatRequest.requestId}

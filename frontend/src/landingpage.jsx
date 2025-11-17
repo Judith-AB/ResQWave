@@ -1,16 +1,15 @@
-// --- frontend/LandingPage.jsx ---
 import React, { useState, useEffect } from "react";
 import HelpRequestForm from "./HelpRequestForm";
-import VolunteerForm from "./VolunteerForm"; // Assuming volunteer signup form component exists
-import AdminSignInForm from "./AdminSignInForm"; // Assuming admin sign-in component exists
+import VolunteerForm from "./VolunteerForm";
+import AdminSignInForm from "./AdminSignInForm";
 import VolunteerDashboard from "./VolunteerDashboard.jsx";
-import VolunteerSignInModal from "./VolunteerSignInModal"; // Assuming volunteer sign-in modal exists
+import VolunteerSignInModal from "./VolunteerSignInModal";
+import LookupModal from "./LookupModal"; // You need this import if using the Resume Help feature
 
 import "./index.css";
 
-// NOTE: We don't strictly need these imports if we don't use their state here, 
-// but we include them based on your provided context usage.
-import { useVolunteers } from "./context/VolunteerContext";
+// 🚨 CRITICAL FIX: Ensure ALL context hooks used ANYWHERE in the file are imported
+import { useVolunteers } from "./context/VolunteerContext"; // <-- UNCOMMENT/ENSURE THIS IS PRESENT
 import { useRequests } from "./context/RequestsContext";
 
 // --- Volunteer Chooser Modal Component ---
@@ -58,6 +57,7 @@ const LandingPage = () => {
   const [showVolunteerChooser, setShowVolunteerChooser] = useState(false);
   const [showVolunteerSignIn, setShowVolunteerSignIn] = useState(false);
   const [volunteerUser, setVolunteerUser] = useState(null); // Holds user data if signed in
+  const [showLookupModal, setShowLookupModal] = useState(false);
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -118,13 +118,17 @@ const LandingPage = () => {
 
           <div className="nav-buttons">
             <button
-              className="btn-dashboard"
+              className="btn-volunteer-portal"
               onClick={() => setShowVolunteerChooser(true)}
-              style={{ border: '2px solid #4CAF50', color: '#4CAF50', marginRight: '10px' }}
+
             >
               Volunteer Portal
             </button>
             <button className="btn-dashboard" onClick={() => setShowAdminForm(true)}>Admin Dashboard</button>
+            <button
+              className="btn-resume-help" // Use a secondary style for clarity
+              onClick={() => setShowLookupModal(true)}>Resume Help
+            </button>
             <button className="btn-help" onClick={() => setShowHelpForm(true)}>Get Help Now</button>
           </div>
         </nav>
@@ -246,6 +250,7 @@ const LandingPage = () => {
           onSuccess={handleVolunteerSuccess}
         />
       )}
+      {showLookupModal && <LookupModal onClose={() => setShowLookupModal(false)} />}
     </div>
   );
 };
