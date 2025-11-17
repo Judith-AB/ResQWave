@@ -104,9 +104,9 @@ const LandingPage = () => {
         <nav className="nav-container">
           <div className="logo" onClick={() => scrollToSection("hero")}>
             <div className="logo-icon"><img 
-                src="src/assets/logo_ResQwave.png" 
+                src="src/assets/Logo.png" 
                 alt="ResQWave Logo" 
-          style={{ width: "60px",height: "60px"}}  /></div><p> </p>ResQWave
+          style={{ width: "70px",height: "70px"}}  /></div><p> </p>ResQWave
           </div>
 
           <ul className="nav-menu">
@@ -207,9 +207,9 @@ const LandingPage = () => {
         <div className="footer-container">
           <div>
           <div className="footer-brand"><div className="logo-icon"><img 
-          src="src/assets/logo_ResQwave.png"  
+          src="src/assets/Logo.png"  
           alt="ResQWave Logo" 
-          style={{ width: "60px", height: "60px" }} 
+          style={{ width: "65px", height: "65px" }} 
         />
 </div> <p> </p>Disaster Relief Platform</div>
             <p className="footer-description">
