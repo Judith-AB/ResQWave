@@ -4,17 +4,25 @@ import "./index.css";
 import ChatBox from './ChatBox';
 import io from 'socket.io-client';
 
-const API_ASSIGNMENT_URL = "http://localhost:3001/api/assignments";
+const ASSIGNMENT_API_URL = "http://localhost:3001/api/assignments";
 const SOCKET_SERVER_URL = "http://localhost:3001";
 
 const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
 
-
 const thStyle = { padding: "14px 20px", textAlign: "left", fontWeight: 600, fontSize: "14px", borderBottom: "1px solid #e2e8f0" };
 const tdStyle = { padding: "14px 20px", fontSize: "14px", color: "#334155" };
-const buttonAction = (color) => ({
-  backgroundColor: color, border: "none", padding: "7px 12px", borderRadius: "6px", fontSize: "13px",
-  fontWeight: 600, color: "white", cursor: "pointer", marginRight: "8px", minWidth: "75px"
+const buttonAction = (color, disabled = false) => ({
+  backgroundColor: disabled ? "#9ca3af" : color,
+  border: "none",
+  padding: "7px 12px",
+  borderRadius: "6px",
+  fontSize: "13px",
+  fontWeight: 600,
+  color: "white",
+  cursor: disabled ? "not-allowed" : "pointer",
+  marginRight: "8px",
+  minWidth: "75px",
+  opacity: disabled ? 0.6 : 1
 });
 
 const getUrgencyStyle = (score) => {
@@ -25,190 +33,132 @@ const getUrgencyStyle = (score) => {
 };
 
 const VolunteerDashboard = ({ onClose, user }) => {
-  const [requests, setRequests] = useState([]); // List of PENDING tasks
-  const [myActiveAssignment, setMyActiveAssignment] = useState(null); // The single accepted task
+  const [requests, setRequests] = useState([]);
+  const [myActiveAssignment, setMyActiveAssignment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeChatRequest, setActiveChatRequest] = useState(null);
 
   const volunteerId = user.id;
-  const isVolunteerMedicallyVerified = user.isMedicalVerified;
-
-  const refreshData = () => {
-    setLoading(true);
-    fetchData();
-    fetchActiveAssignment(); // Always fetch the active task on refresh
-  };
-
 
   const fetchData = () => {
-
-    fetch(`http://localhost:3001/api/requests/pending`)
-      .then((res) => res.json())
-      .then((data) => {
-
-        const availableTasks = data.requests.filter(req => {
-
-          const isMedicalRequest = req.emergencyType.toLowerCase().includes('medical');
-
-          if (req.status !== 'Pending') {
-            return false;
-          }
-
-          if (isMedicalRequest && !isVolunteerMedicallyVerified) {
-            return false;
-          }
-
-          return true;
-        });
-
-        setRequests(availableTasks || []);
+    setLoading(true);
+    fetch(`${ASSIGNMENT_API_URL}/available-tasks/${volunteerId}`)
+      .then(res => res.json())
+      .then(data => {
+        setRequests(data.requests || []);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("Error fetching tasks:", err);
-        setLoading(false);
-      });
+      .catch(err => { console.error("Fetch tasks error", err); setLoading(false); });
   };
-
 
   const fetchActiveAssignment = () => {
-
-    fetch(`${API_ASSIGNMENT_URL}/my-active-task/${volunteerId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setMyActiveAssignment(data.activeRequest);
-      })
-      .catch((err) => {
-        console.error("Error fetching active assignment:", err);
-      });
+    fetch(`${ASSIGNMENT_API_URL}/my-active-task/${volunteerId}`)
+      .then(res => res.json())
+      .then(data => setMyActiveAssignment(data.activeRequest || null))
+      .catch(err => console.error("fetch active", err));
   };
-
 
   useEffect(() => {
     fetchData();
-    fetchActiveAssignment(); 
+    fetchActiveAssignment();
 
-    if (!socket.connected) {
-      socket.connect();
-    }
+    if (!socket.connected) socket.connect();
 
-    const statusChangeListener = (data) => {
-      if (data.status === 'Completed' || data.status === 'Conflict' || data.status === 'Assigned' || data.status === 'Pending') {
-        refreshData();
+    const listener = (data) => {
+      if (["Pending", "Assigned", "Conflict", "Reassign", "Completed"].includes(data.status)) {
+        fetchData();
+        fetchActiveAssignment();
       }
     };
 
-    socket.on('system_notification', statusChangeListener);
-
-    return () => {
-      socket.off('system_notification', statusChangeListener);
-    };
+    socket.on('system_notification', listener);
+    return () => socket.off('system_notification', listener);
   }, []);
 
-
-
-
   const handleAccept = async (reqId) => {
-    if (!confirm("Are you sure you want to accept this task?")) return;
+    if (!confirm("Accept this task?")) return;
     try {
-      const response = await fetch(`${API_ASSIGNMENT_URL}/accept-request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId: reqId, volunteerId: volunteerId }),
+      const res = await fetch(`${ASSIGNMENT_API_URL}/accept-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: reqId, volunteerId })
       });
 
-      if (response.ok) {
-     
-        setActiveChatRequest({
-          requestId: reqId,
-          participantName: user.fullName || user.username
-        });
+      if (res.status === 403) {
+        const data = await res.json();
+        alert(data.message || "Only medical volunteers can accept medical requests.");
+        return;
+      }
 
-        alert("Request accepted! Starting chat...");
-        refreshData();
-        const data = await response.json();
-        alert(`Failed to accept request: ${data.message}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActiveChatRequest({ requestId: reqId, participantName: user.fullName || user.username });
+        alert("Request accepted — starting chat.");
+        fetchData();
+        fetchActiveAssignment();
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to accept.");
       }
     } catch (err) {
-      alert("Failed to connect to server during acceptance.");
+      alert("Network error accepting.");
     }
   };
 
-
   const handleDecline = async (reqId) => {
-    if (!confirm("Are you sure you want to decline this request?")) return;
+    if (!confirm("Decline this task?")) return;
     try {
-      const response = await fetch(`${API_ASSIGNMENT_URL}/decline/${reqId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ volunteerId: volunteerId }),
+      const res = await fetch(`${ASSIGNMENT_API_URL}/volunteer-decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: reqId, volunteerId })
       });
-
-      if (response.ok) {
-        alert("Request declined. It has been returned to the queue.");
-        refreshData();
+      const data = await res.json();
+      if (res.ok) {
+        if (data.needsAdminAssign) {
+          alert("This request was declined by 3 volunteers. Admin must reassign.");
+        } else {
+          alert("Declined — request returned to queue.");
+        }
+        fetchData();
+        fetchActiveAssignment();
       } else {
-        alert("Failed to decline request.");
+        alert(data.message || "Failed to decline.");
       }
-    } catch (err) {
-      alert("Failed to connect to server during decline.");
+    } catch {
+      alert("Network error declining.");
     }
   };
 
   const handleResumeChat = (reqId) => {
-    setActiveChatRequest({
-      requestId: reqId,
-      participantName: user.fullName || user.username
-    });
+    setActiveChatRequest({ requestId: reqId, participantName: user.fullName || user.username });
   };
 
-
-  if (loading) {
-    return <div style={{ textAlign: "center", paddingTop: "50px", fontSize: "1.5rem" }}>Loading available tasks...</div>;
-  }
+  if (loading) return <div style={{ textAlign: 'center', paddingTop: 50 }}>Loading tasks...</div>;
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", backgroundColor: "#f6f8fb", minHeight: "100vh", color: "#1e293b", margin: 0 }}>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", padding: "15px 30px", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "1.4rem" }}>
-          🛟 **Volunteer Task Board** ({user.fullName})
-        </div>
-
-        <button onClick={onClose} style={{ border: 'none', background: 'none', color: '#f44336', cursor: 'pointer', fontWeight: 'bold' }}>LOG OUT</button>
+    <div style={{ minHeight: '100vh', background: '#f6f8fb', fontFamily: "Segoe UI" }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 24px', background: 'white', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ fontWeight: 800 }}>🛟 Volunteer Task Board ({user.fullName})</div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#d32f2f', fontWeight: 700 }}>LOG OUT</button>
       </div>
 
-      <div style={{ maxWidth: "1100px", margin: "40px auto", padding: "0 20px" }}>
-
+      <div style={{ maxWidth: 1100, margin: '32px auto', padding: '0 20px' }}>
         {myActiveAssignment && (
-          <div style={{ padding: '20px', marginBottom: '40px', borderRadius: '12px', background: '#e0f7fa', border: '2px solid #00bcd4', boxShadow: '0 4px 10px rgba(0, 188, 212, 0.2)' }}>
-            <h3 style={{ margin: 0, color: '#00838f', borderBottom: '1px solid #b2ebf2', paddingBottom: '10px' }}>
-              ⭐ **Your Active Assignment** - Request #{myActiveAssignment.id}
-            </h3>
-            <p style={{ marginTop: '10px', fontWeight: 'bold' }}>
-              {myActiveAssignment.emergencyType} in {myActiveAssignment.location} (Score: {myActiveAssignment.urgencyScore?.toFixed(2)})
-            </p>
-            <p style={{ fontStyle: 'italic', color: '#555' }}>
-              Details: "{myActiveAssignment.details}"
-            </p>
-            <button
-              onClick={() => handleResumeChat(myActiveAssignment.id)}
-              style={buttonAction('#00bcd4')}
-            >
-              RESUME CHAT / PROVIDE UPDATE
-            </button>
+          <div style={{ background: '#e0f7fa', padding: 18, borderRadius: 10, marginBottom: 24 }}>
+            <h3 style={{ margin: 0 }}>⭐ Your Active Assignment — Request #{myActiveAssignment.id}</h3>
+            <p style={{ margin: '8px 0', fontWeight: 700 }}>{myActiveAssignment.emergencyType} in {myActiveAssignment.location} (Score: {myActiveAssignment.urgencyScore?.toFixed(2)})</p>
+            <p style={{ fontStyle: 'italic' }}>"{myActiveAssignment.details}"</p>
+            <button onClick={() => handleResumeChat(myActiveAssignment.id)} style={buttonAction('#00bcd4')}>RESUME CHAT</button>
           </div>
         )}
 
+        <h2 style={{ fontSize: '1.6rem', marginBottom: 12 }}>Available Requests ({requests.length})</h2>
 
-        <h2 style={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", marginBottom: "20px" }}>
-          Pending Requests ({requests.length})
-        </h2>
-
-        <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "12px", overflow: "hidden", boxShadow: "0 3px 10px rgba(0, 0, 0, 0.08)" }}>
+        <table style={{ width: '100%', background: 'white', borderRadius: 10, overflow: 'hidden' }}>
           <thead>
-            <tr style={{ backgroundColor: "#f8fafc", color: "#475569" }}>
-              <th style={thStyle}>Request ID</th>
+            <tr style={{ background: '#f8fafc' }}>
+              <th style={thStyle}>ID</th>
               <th style={thStyle}>Victim</th>
               <th style={thStyle}>Location</th>
               <th style={thStyle}>Urgency</th>
@@ -216,58 +166,33 @@ const VolunteerDashboard = ({ onClose, user }) => {
             </tr>
           </thead>
           <tbody>
-            {requests.length > 0 ? (
-              requests.map((req) => {
-                const urgency = getUrgencyStyle(req.urgencyScore);
-                const isMedical = req.emergencyType.toLowerCase().includes('medical');
-
-                return (
-                  <tr key={req.id} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fbff")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                  >
-                    <td style={tdStyle}>#{req.id}</td>
-                    <td style={tdStyle}>
-                      <div style={{ fontWeight: 600 }}>{req.victimName || "Unknown"}</div>
-                      <small style={{ color: "#475569" }}>{req.contact || "N/A"}</small>
-                    </td>
-                    <td style={tdStyle}>{req.location}</td>
-                    <td style={tdStyle}>
-                     
-                      {isMedical && (
-                        <small style={{ color: '#d32f2f', fontWeight: 'bold' }}>[MEDICAL TASK] </small>
-                      )}
-                      <span style={{ fontWeight: 600, padding: "4px 10px", borderRadius: "12px", fontSize: "13px", background: urgency.background, color: urgency.color }}>
-                        {req.urgencyScore?.toFixed(1)} - {urgency.label}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>
-                    
-                      <button style={buttonAction("#22c55e")} onClick={() => handleAccept(req.id)}>Accept</button>
-                      <button style={buttonAction("#ef4444")} onClick={() => handleDecline(req.id)}>Decline</button>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan="5" style={{ textAlign: "center", padding: "30px 0", color: "#64748b", fontStyle: "italic" }}>
-                  No pending requests.
-                </td>
-              </tr>
-            )}
+            {requests.length === 0 ? (
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: '#64748b' }}>No pending requests.</td></tr>
+            ) : requests.map(req => {
+              const urgency = getUrgencyStyle(req.urgencyScore);
+              const isMedical = (req.emergencyType || '').toLowerCase() === 'medical';
+              return (
+                <tr key={req.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={tdStyle}>#{req.id}</td>
+                  <td style={tdStyle}><div style={{ fontWeight: 700 }}>{req.victimName}</div><small>{req.contact}</small></td>
+                  <td style={tdStyle}>{req.location}</td>
+                  <td style={tdStyle}>
+                    {isMedical && <small style={{ color: '#d32f2f', fontWeight: 700 }}>[MEDICAL]&nbsp;</small>}
+                    <span style={{ padding: '4px 8px', borderRadius: 10, background: urgency.background, color: urgency.color, fontWeight: 700 }}>{req.urgencyScore?.toFixed(1)} - {urgency.label}</span>
+                  </td>
+                  <td style={tdStyle}>
+                    {/* If this request is assigned to someone else, these won't appear in this list due to backend filtering */}
+                    <button style={buttonAction('#22c55e')} onClick={() => handleAccept(req.id)}>Accept</button>
+                    <button style={buttonAction('#ef4444')} onClick={() => handleDecline(req.id)}>Decline</button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-    
-      {activeChatRequest && (
-        <ChatBox
-          requestId={activeChatRequest.requestId}
-          participantName={activeChatRequest.participantName}
-          onClose={() => setActiveChatRequest(null)}
-        />
-      )}
+      {activeChatRequest && <ChatBox requestId={activeChatRequest.requestId} participantName={activeChatRequest.participantName} onClose={() => setActiveChatRequest(null)} />}
     </div>
   );
 };
