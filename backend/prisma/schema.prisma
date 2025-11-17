@@ -2,80 +2,95 @@
 
 datasource db {
   provider = "sqlite"
-  url= "file:./prisma/dev.db"
+  url      = "file:./prisma/dev.db"
 }
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// 1. User Model 
+//
+// 1️⃣ USER MODEL
+//
 model User {
-  id                    Int      @id @default(autoincrement())
-  username              String   @unique
-  passwordHash          String
-  fullName              String
-  contact               String
-  location              String
-  skills                String?
-  status                String   @default("Available")
-  isVolunteer           Boolean  @default(false)
-  isMedicalVerified     Boolean  @default(false)
-  
-  proofs                Proof[] 
-  assignments           Assignment[] 
+  id                Int      @id @default(autoincrement())
+  username          String   @unique
+  passwordHash      String
+  fullName          String
+  contact           String
+  location          String
+  skills            String?
+  status            String   @default("Available")
+  isVolunteer       Boolean  @default(false)
+
+  // ⭐ NEW FIELD — Admin must approve volunteer before use
+  isApproved        Boolean  @default(false)
+
+  // Medical verification by uploading proof
+  isMedicalVerified Boolean  @default(false)
+
+  proofs            Proof[]
+  assignments       Assignment[]
 }
 
-// 2. Request Model 
+//
+// 2️⃣ REQUEST MODEL
+//
 model Request {
   id                    Int      @id @default(autoincrement())
   victimName            String
   contact               String
   location              String
-  emergencyType         String 
+  emergencyType         String
   details               String
-  urgencyScore          Float    @default(0.0) 
-  rejectionCount        Int      @default(0) 
-  status                String   @default("Pending") 
+  urgencyScore          Float    @default(0.0)
+  rejectionCount        Int      @default(0)
+  status                String   @default("Pending")
   isResolvedByVictim    Boolean  @default(false)
   isResolvedByVolunteer Boolean  @default(false)
   createdAt             DateTime @default(now())
 
-  assignments           Assignment[] 
-  chatMessages          ChatMessage[] 
+  assignments           Assignment[]
+  chatMessages          ChatMessage[]
 }
 
-// 3. Assignment Model 
+//
+// 3️⃣ ASSIGNMENT MODEL
+//
 model Assignment {
-  id                    Int      @id @default(autoincrement())
-  requestId             Int
-  volunteerId           Int
-  isAccepted            Boolean  @default(false)
+  id          Int   @id @default(autoincrement())
+  requestId   Int
+  volunteerId Int
+  isAccepted  Boolean @default(false)
 
-  request               Request @relation(fields: [requestId], references: [id])
-  volunteer             User    @relation(fields: [volunteerId], references: [id])
+  request   Request @relation(fields: [requestId], references: [id])
+  volunteer User    @relation(fields: [volunteerId], references: [id])
 
-  @@unique([requestId, volunteerId]) 
+  @@unique([requestId, volunteerId])
 }
 
-// 4. Proof Model 
+//
+// 4️⃣ PROOF MODEL (medical documents)
+//
 model Proof {
-  id                    Int      @id @default(autoincrement())
-  userId                Int
-  proofUrl              String  
-  isVerified            Boolean  @default(false)
-  submittedAt           DateTime @default(now())
-  
-  user                  User @relation(fields: [userId], references: [id])
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  proofUrl    String
+  isVerified  Boolean  @default(false)
+  submittedAt DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
 }
 
-// 5. Chat Model 
+//
+// 5️⃣ CHAT MESSAGES
+//
 model ChatMessage {
-  id                    Int      @id @default(autoincrement())
-  requestId             Int
-  senderName            String  
-  content               String
-  timestamp             DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  requestId Int
+  senderName String
+  content   String
+  timestamp DateTime @default(now())
 
-  request               Request @relation(fields: [requestId], references: [id])
+  request   Request  @relation(fields: [requestId], references: [id])
 }
