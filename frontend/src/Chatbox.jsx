@@ -1,4 +1,3 @@
-// --- frontend/ChatBox.jsx ---
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from './context/ChatContext';
 import { useRequests } from './context/RequestsContext';
@@ -57,8 +56,7 @@ const ChatBox = ({ requestId, participantName, onClose }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-
-    // --- LOGIC HANDLERS ---
+    
     const reportConflict = () => {
         if (!confirm("Are you sure you want to report a conflict?")) return;
         socket.emit('raise_conflict', { requestId: reqIdStr, reporterRole: userRole, reason: `${userRole} reported conflict.` });
@@ -165,7 +163,7 @@ const ChatBox = ({ requestId, participantName, onClose }) => {
                 <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #ccc', textAlign: 'right', background: '#e9ecef', flexShrink: 0 }}>
                     <button
                         onClick={handleMarkSolved}
-                        disabled={isSolvedConfirmed || isConflict} // DISABLE DURING CONFLICT
+                        disabled={isSolvedConfirmed || isConflict} 
                         style={{ padding: '0.5rem 1rem', background: (isSolvedConfirmed || isConflict) ? '#adb5bd' : '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
                     >
                         {isConflict ? '🚫 Admin Control' : isSolvedConfirmed ? '✅ Confirmed Solved' : 'Mark as Solved'}

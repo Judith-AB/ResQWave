@@ -4,16 +4,15 @@ import VolunteerForm from "./VolunteerForm";
 import AdminSignInForm from "./AdminSignInForm";
 import VolunteerDashboard from "./VolunteerDashboard.jsx";
 import VolunteerSignInModal from "./VolunteerSignInModal";
-import LookupModal from "./LookupModal"; // You need this import if using the Resume Help feature
+import LookupModal from "./LookupModal"; 
 
 import "./index.css";
 
-// 🚨 CRITICAL FIX: Ensure ALL context hooks used ANYWHERE in the file are imported
-import { useVolunteers } from "./context/VolunteerContext"; // <-- UNCOMMENT/ENSURE THIS IS PRESENT
+
+import { useVolunteers } from "./context/VolunteerContext"; 
 import { useRequests } from "./context/RequestsContext";
 
-// --- Volunteer Chooser Modal Component ---
-// This acts as a routing selection for volunteers
+
 const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
   <div className="form-overlay">
     <div className="form-container" style={{ width: '350px', textAlign: 'center', padding: '2rem' }}>
@@ -48,8 +47,6 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
 
 
 const LandingPage = () => {
-  // NOTE: This state is used for the volunteer dashboard conditional rendering
-  // const { volunteers } = useVolunteers(); 
 
   const [showHelpForm, setShowHelpForm] = useState(false);
   const [showVolunteerForm, setShowVolunteerForm] = useState(false); // Signup
@@ -87,7 +84,7 @@ const LandingPage = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Function run on successful Volunteer Sign-In 
+  
   const handleVolunteerSuccess = (userData) => {
     if (userData && userData.id) {
       setVolunteerUser(userData);
@@ -106,7 +103,10 @@ const LandingPage = () => {
       <header className="header">
         <nav className="nav-container">
           <div className="logo" onClick={() => scrollToSection("hero")}>
-            <div className="logo-icon">❤️</div>ResQWave
+            <div className="logo-icon"><img 
+                src="src/assets/logo_ResQwave.png" 
+                alt="ResQWave Logo" 
+          style={{ width: "60px",height: "60px"}}  /></div><p> </p>ResQWave
           </div>
 
           <ul className="nav-menu">
@@ -126,7 +126,7 @@ const LandingPage = () => {
             </button>
             <button className="btn-dashboard" onClick={() => setShowAdminForm(true)}>Admin Dashboard</button>
             <button
-              className="btn-resume-help" // Use a secondary style for clarity
+              className="btn-resume-help" 
               onClick={() => setShowLookupModal(true)}>Resume Help
             </button>
             <button className="btn-help" onClick={() => setShowHelpForm(true)}>Get Help Now</button>
@@ -159,7 +159,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* How It Works Section */}
+  
       <section id="how-it-works" className="how-it-works">
         <div className="section-container">
           <h2 className="section-title">How It Works</h2>
@@ -193,7 +193,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* About and Footer Section */}
+  
       <section id="about" className="about">
         <div className="section-container">
           <h2 className="section-title">About This Project</h2>
@@ -206,7 +206,12 @@ const LandingPage = () => {
       <footer id="contact" className="footer">
         <div className="footer-container">
           <div>
-            <div className="footer-brand"><div className="logo-icon">❤️</div> Disaster Relief Platform</div>
+          <div className="footer-brand"><div className="logo-icon"><img 
+          src="src/assets/logo_ResQwave.png"  
+          alt="ResQWave Logo" 
+          style={{ width: "60px", height: "60px" }} 
+        />
+</div> <p> </p>Disaster Relief Platform</div>
             <p className="footer-description">
               A student project demonstrating technology-driven disaster relief coordination.
             </p>
@@ -229,12 +234,12 @@ const LandingPage = () => {
         </div>
       </footer>
 
-      {/* --- Forms and Modals Rendering --- */}
+    
       {showHelpForm && <HelpRequestForm onClose={() => setShowHelpForm(false)} />}
       {showVolunteerForm && <VolunteerForm onClose={() => setShowVolunteerForm(false)} />}
       {showAdminForm && <AdminSignInForm onClose={() => setShowAdminForm(false)} />}
 
-      {/* RENDER VOLUNTEER CHOOSER */}
+
       {showVolunteerChooser && (
         <VolunteerChooser
           onClose={() => setShowVolunteerChooser(false)}
@@ -243,7 +248,7 @@ const LandingPage = () => {
         />
       )}
 
-      {/* RENDER VOLUNTEER SIGN-IN MODAL */}
+      
       {showVolunteerSignIn && (
         <VolunteerSignInModal
           onClose={() => setShowVolunteerSignIn(false)}

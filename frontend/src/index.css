@@ -52,7 +52,6 @@ body {
 .logo-icon {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, #4FC3F7, #29B6F6);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -111,7 +110,7 @@ body {
   color: white;
 }
 
-/* Volunteer Portal Button (Green, Bordered) */
+
 .btn-volunteer-portal {
   padding: 0.5rem 1rem;
   background: transparent;
@@ -227,15 +226,13 @@ body {
 }
 
 
-/* --- NEW STYLE: Resume Help Button (Purple/Indigo) --- */
+
 .btn-resume-help {
-  /* Base style: Transparent background, purple border, purple text */
+
   padding: 0.5rem 1rem;
   background: transparent;
   border: 2px solid #5E35B1;
-  /* Base Purple/Indigo border */
   color: #5E35B1;
-  /* Base Purple/Indigo text */
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.3s ease;
@@ -243,14 +240,12 @@ body {
 }
 
 .btn-resume-help:hover {
-  /* Hover state: Fills with purple, text turns white */
+
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(94, 53, 177, 0.3);
-  /* Soft glow */
   background: #5E35B1;
-  /* Fills solid purple */
   color: white;
-  /* Text turns white (Targeted fix) */
+  
 }
 
 .btn-volunteer-portal {
@@ -258,14 +253,12 @@ body {
   background: transparent;
   border: 2px solid #4CAF50;
   color: #4CAF50;
-  /* Base color is green */
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
-/* Ensure the hover state is also present for the white-text effect */
 .btn-volunteer-portal:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
@@ -298,14 +291,11 @@ body {
 }
 
 .stat-item {
-  /* Card Styling */
   text-align: center;
   background: rgba(255, 255, 255, 0.9);
-  /* White background */
   padding: 1.5rem 1rem;
   border-radius: 12px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-  /* Subtle shadow for 3D look */
   border: 1px solid #eee;
   transition: all 0.3s ease;
   cursor: default;
@@ -314,15 +304,12 @@ body {
 .stat-item:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 30px rgba(33, 150, 243, 0.2);
-  /* Slight lift and blue glow on hover */
 }
 
 .stat-number {
   font-size: 2rem;
-  /* Slightly larger text */
   font-weight: 700;
   color: #1565C0;
-  /* Blue for emphasis */
   margin-bottom: 0.5rem;
   display: block;
 }
@@ -341,7 +328,7 @@ body {
   }
 }
 
-/* How it Works */
+
 .how-it-works {
   padding: 6rem 2rem;
   background: #f8f9ff;
@@ -433,7 +420,7 @@ body {
   background: linear-gradient(135deg, #4CAF50, #388E3C);
 }
 
-/* Forms */
+
 .form-overlay {
   position: fixed;
   top: 0;
@@ -543,7 +530,6 @@ body {
   color: white;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .hero-container {
     grid-template-columns: 1fr;
