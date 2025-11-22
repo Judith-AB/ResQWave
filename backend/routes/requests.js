@@ -6,7 +6,7 @@ import 'dotenv/config';
 
 const router = express.Router();
 
-/* ---------------- GROQ CONFIG ---------------- */
+
 const getGroqClient = () => {
   if (!process.env.GROQ_API_KEY) {
     console.warn("GROQ_API_KEY missing; using fallback scoring.");
@@ -16,7 +16,6 @@ const getGroqClient = () => {
 };
 const groq = getGroqClient();
 
-/* ---------------- URGENCY SCORE ---------------- */
 const originalCalculateUrgencyScore = (type) => {
   const map = {
     medical: 9.5, rescue: 9.5,
@@ -48,7 +47,6 @@ const calculateUrgencyScore = async (type, details) => {
   }
 };
 
-/* ---------------- CREATE REQUEST ---------------- */
 router.post('/', async (req, res) => {
   const { victimName, contact, location, emergencyType, details } = req.body;
 
@@ -87,25 +85,18 @@ router.post('/', async (req, res) => {
 /* ---------------- PENDING REQUESTS (ADMIN) ---------------- */
 router.get('/pending', async (req, res) => {
   try {
-    /* 🔥 FIX #1 — ALWAYS include proofs fully (verified + unverified) */
     const volunteers = await prisma.user.findMany({
-      where: {
-        isVolunteer: true,
-        isApproved: true        // ONLY APPROVED volunteers
-      },
-      include: {
-        proofs: true            // FULL PROOF DATA
-      }
+      where: { isVolunteer: true, isApproved: true },
+      include: { proofs: true }
     });
 
-    /* 🔥 FIX #2 — Doctor prefix automatically treated as medically verified */
+    // Auto-medical verify doctors OR verified proofs
     const enrichedVolunteers = volunteers.map(v => ({
       ...v,
       isMedicalVerified:
         v.fullName.startsWith("Dr") || v.proofs.some(p => p.isVerified)
     }));
 
-    /* ---------------- GET REQUESTS ---------------- */
     const pendingRequests = await prisma.request.findMany({
       where: {
         status: {
@@ -117,7 +108,8 @@ router.get('/pending', async (req, res) => {
         assignments: {
           orderBy: { id: 'desc' },
           take: 1,
-          include: {
+          select: {
+            volunteerId: true,
             volunteer: {
               select: {
                 id: true,
@@ -142,21 +134,35 @@ router.get('/pending', async (req, res) => {
   }
 });
 
-/* ---------------- LOOKUP REQUEST ---------------- */
 router.post('/lookup', async (req, res) => {
   const { requestId, contact } = req.body;
-  if (!requestId && !contact) return res.status(400).json({ message: "ID or contact required." });
+
+  if (!requestId && !contact) {
+    return res.status(400).json({ message: "ID or Contact required." });
+  }
 
   try {
     let request = null;
 
+    /* ---- SEARCH BY REQUEST ID ---- */
     if (requestId) {
       const id = parseInt(requestId);
       request = await prisma.request.findUnique({
         where: { id },
-        select: {
-          id: true, victimName: true, contact: true, status: true,
-          emergencyType: true, urgencyScore: true, details: true
+        include: {
+          assignments: {
+            orderBy: { id: 'desc' },
+            take: 1,
+            select: {
+              volunteerId: true,
+              volunteer: {
+                select: {
+                  id: true,
+                  fullName: true
+                }
+              }
+            }
+          }
         }
       });
 
@@ -165,6 +171,7 @@ router.post('/lookup', async (req, res) => {
       }
     }
 
+    /* ---- SEARCH BY CONTACT ---- */
     if (!request && contact) {
       request = await prisma.request.findFirst({
         where: {
@@ -172,17 +179,51 @@ router.post('/lookup', async (req, res) => {
           status: { notIn: ['Completed'] }
         },
         orderBy: { createdAt: 'desc' },
-        select: {
-          id: true, victimName: true, contact: true, status: true,
-          emergencyType: true, urgencyScore: true, details: true
+        include: {
+          assignments: {
+            orderBy: { id: 'desc' },
+            take: 1,
+            select: {
+              volunteerId: true,
+              volunteer: {
+                select: {
+                  id: true,
+                  fullName: true
+                }
+              }
+            }
+          }
         }
       });
     }
 
-    if (!request) return res.status(404).json({ message: "No active request found." });
-    if (request.status === 'Completed') return res.status(409).json({ message: "Already completed." });
+    if (!request) {
+      return res.status(404).json({ message: "No active request found." });
+    }
 
-    res.status(200).json({ message: "Request found.", request });
+    if (request.status === 'Completed') {
+      return res.status(409).json({ message: "Already completed." });
+    }
+
+    // Extract latest assignment
+    const latest = request.assignments?.[0];
+    const assignedVolunteerId = latest?.volunteerId || null;
+
+    res.status(200).json({
+      message: "Request found.",
+      request: {
+        id: request.id,
+        victimName: request.victimName,
+        contact: request.contact,
+        status: request.status,
+        emergencyType: request.emergencyType,
+        urgencyScore: request.urgencyScore,
+        location: request.location,
+        details: request.details,
+        assignedVolunteerId,
+        assignedVolunteerName: latest?.volunteer?.fullName || null
+      }
+    });
 
   } catch (err) {
     console.error("Request Lookup Error:", err);

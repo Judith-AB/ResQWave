@@ -1,13 +1,11 @@
-// --- backend/routes/assignments.js ---
+
 import express from 'express';
 import prisma from '../src/client.js';
 import { io } from '../src/index.js';
 
 const router = express.Router();
 
-/* ----------------------------------------
-   Helper: Update volunteer status
------------------------------------------ */
+
 const updateVolunteerStatus = async (volunteerId, newStatus) => {
   try {
     await prisma.user.update({
@@ -20,15 +18,13 @@ const updateVolunteerStatus = async (volunteerId, newStatus) => {
 };
 
 
-/* ----------------------------------------
-   ADMIN ASSIGN (Create new assignment)
------------------------------------------ */
+
 router.post('/admin-assign', async (req, res) => {
   const { requestId, volunteerId } = req.body;
   const reqIdStr = String(requestId);
 
   try {
-    // 0. Free previous volunteers
+  
     const prevAssignments = await prisma.assignment.findMany({
       where: { requestId },
       select: { volunteerId: true }
@@ -40,13 +36,12 @@ router.post('/admin-assign', async (req, res) => {
       await updateVolunteerStatus(vid, 'Available');
     }
 
-    // 1. Reset previous assignment acceptance
     await prisma.assignment.updateMany({
       where: { requestId },
       data: { isAccepted: false }
     });
 
-    // 2. Create new assignment record
+ 
     await prisma.assignment.create({
       data: {
         requestId,
@@ -56,16 +51,14 @@ router.post('/admin-assign', async (req, res) => {
       }
     });
 
-    // 3. Mark request as assigned
     await prisma.request.update({
       where: { id: requestId },
       data: { status: 'Assigned' }
     });
 
-    // 4. Mark volunteer as busy
+
     await updateVolunteerStatus(volunteerId, 'Busy');
 
-    // 5. Send socket update
     io.to(reqIdStr).emit('system_notification', {
       status: 'Assigned',
       text: 'A volunteer has been assigned by a coordinator.',
@@ -80,9 +73,8 @@ router.post('/admin-assign', async (req, res) => {
 });
 
 
-/* ----------------------------------------
-   VOLUNTEER ACCEPT REQUEST
------------------------------------------ */
+
+
 router.post('/accept-request', async (req, res) => {
   const { requestId, volunteerId } = req.body;
   const reqIdStr = String(requestId);
@@ -95,7 +87,6 @@ router.post('/accept-request', async (req, res) => {
       return res.status(404).json({ message: "Request or volunteer not found." });
     }
 
-    // Medical request rule
     if (request.emergencyType.toLowerCase() === "medical") {
       const hasMedicalSkill =
         (volunteer.skills || "").toLowerCase().includes("medical") ||
@@ -108,7 +99,6 @@ router.post('/accept-request', async (req, res) => {
       }
     }
 
-    // Update the assignment
     const assignment = await prisma.assignment.findFirst({
       where: { requestId, volunteerId },
       orderBy: { id: 'desc' }
@@ -125,7 +115,7 @@ router.post('/accept-request', async (req, res) => {
       });
     }
 
-    // Update request & volunteer status
+   
     await prisma.request.update({
       where: { id: requestId },
       data: { status: "Assigned" }
@@ -147,16 +137,14 @@ router.post('/accept-request', async (req, res) => {
 });
 
 
-/* ----------------------------------------
-   VOLUNTEER DECLINE REQUEST  (PUT /decline/:id)
------------------------------------------ */
+
+
 router.put('/decline/:id', async (req, res) => {
   const requestId = parseInt(req.params.id);
   const { volunteerId } = req.body;
   const reqIdStr = String(requestId);
 
   try {
-    // Record decline in assignment
     let assignment = await prisma.assignment.findFirst({
       where: { requestId, volunteerId },
       orderBy: { id: 'desc' }
@@ -173,10 +161,9 @@ router.put('/decline/:id', async (req, res) => {
       });
     }
 
-    // Make volunteer available again
     await updateVolunteerStatus(volunteerId, 'Available');
 
-    // Count UNIQUE decliners
+
     const declineRecords = await prisma.assignment.findMany({
       where: { requestId, declineCount: { gte: 1 } },
       select: { volunteerId: true }
@@ -184,7 +171,6 @@ router.put('/decline/:id', async (req, res) => {
 
     const uniqueDecliners = new Set(declineRecords.map(d => d.volunteerId));
 
-    // If 3+ volunteers declined → "Reassign"
     if (uniqueDecliners.size >= 3) {
       await prisma.request.update({
         where: { id: requestId },
@@ -203,7 +189,7 @@ router.put('/decline/:id', async (req, res) => {
       });
     }
 
-    // Otherwise return to queue
+    
     await prisma.request.update({
       where: { id: requestId },
       data: { status: 'Pending' }
@@ -224,9 +210,6 @@ router.put('/decline/:id', async (req, res) => {
 });
 
 
-/* ----------------------------------------
-   VOLUNTEER AVAILABLE TASKS
------------------------------------------ */
 router.get('/available-tasks/:volunteerId', async (req, res) => {
   const volunteerId = parseInt(req.params.volunteerId);
 

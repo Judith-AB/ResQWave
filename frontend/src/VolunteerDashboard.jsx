@@ -181,7 +181,7 @@ const VolunteerDashboard = ({ onClose, user }) => {
                     <span style={{ padding: '4px 8px', borderRadius: 10, background: urgency.background, color: urgency.color, fontWeight: 700 }}>{req.urgencyScore?.toFixed(1)} - {urgency.label}</span>
                   </td>
                   <td style={tdStyle}>
-                    {/* If this request is assigned to someone else, these won't appear in this list due to backend filtering */}
+                    
                     <button style={buttonAction('#22c55e')} onClick={() => handleAccept(req.id)}>Accept</button>
                     <button style={buttonAction('#ef4444')} onClick={() => handleDecline(req.id)}>Decline</button>
                   </td>
