@@ -1,4 +1,3 @@
-// --- backend/routes/assignments.js (FINAL CORRECTED VERSION) ---
 import express from 'express';
 import prisma from "../src/client.js";
 
@@ -6,9 +5,7 @@ import { io } from '../src/index.js';
 
 const router = express.Router();
 
-/* ----------------------------------------
-   Helper: Update volunteer status
------------------------------------------ */
+
 const updateVolunteerStatus = async (volunteerId, newStatus) => {
   try {
     await prisma.user.update({
@@ -16,21 +13,17 @@ const updateVolunteerStatus = async (volunteerId, newStatus) => {
       data: { status: newStatus }
     });
   } catch (e) {
-    // FIX: Detailed error logging for stability diagnosis
     console.error(`[DB ERROR] Failed to update volunteer ${volunteerId} → ${newStatus}:`, e);
   }
 };
 
 
-/* ----------------------------------------
-   ADMIN ASSIGN (Create new assignment)
------------------------------------------ */
 router.post('/admin-assign', async (req, res) => {
   const { requestId, volunteerId } = req.body;
   const reqIdStr = String(requestId);
 
   try {
-    // 0. Free previous volunteers
+
     const prevAssignments = await prisma.assignment.findMany({
       where: { requestId },
       select: { volunteerId: true }
@@ -42,13 +35,12 @@ router.post('/admin-assign', async (req, res) => {
       await updateVolunteerStatus(vid, 'Available');
     }
 
-    // 1. Reset previous assignment acceptance
+    
     await prisma.assignment.updateMany({
       where: { requestId },
       data: { isAccepted: false }
     });
 
-    // 2. Create new assignment record
     await prisma.assignment.create({
       data: {
         requestId,
@@ -58,16 +50,15 @@ router.post('/admin-assign', async (req, res) => {
       }
     });
 
-    // 3. Mark request as assigned
     await prisma.request.update({
       where: { id: requestId },
       data: { status: 'Assigned' }
     });
 
-    // 4. Mark volunteer as busy
+
     await updateVolunteerStatus(volunteerId, 'Busy');
 
-    // 5. Send socket update
+
     io.to(reqIdStr).emit('system_notification', {
       status: 'Assigned',
       text: 'A volunteer has been assigned by a coordinator.',
@@ -81,14 +72,11 @@ router.post('/admin-assign', async (req, res) => {
   }
 });
 
-/* ----------------------------------------
-   VOLUNTEER ACTIVE TASK (GET /my-active-task/:volunteerId)
------------------------------------------ */
+
 router.get('/my-active-task/:volunteerId', async (req, res) => {
   const volunteerId = parseInt(req.params.volunteerId);
 
   try {
-    // Find the request currently accepted by this volunteer AND is not completed
     const activeAssignment = await prisma.request.findFirst({
       where: {
         status: { in: ['Assigned', 'Conflict', 'Atmost'] },
@@ -109,7 +97,7 @@ router.get('/my-active-task/:volunteerId', async (req, res) => {
       }
     });
 
-    // Send back the active assignment (or null if none found)
+
     res.json({ activeRequest: activeAssignment });
 
   } catch (error) {
@@ -119,9 +107,6 @@ router.get('/my-active-task/:volunteerId', async (req, res) => {
 });
 
 
-/* ----------------------------------------
-   VOLUNTEER ACCEPT REQUEST
------------------------------------------ */
 router.post('/accept-request', async (req, res) => {
   const { requestId, volunteerId } = req.body;
   const reqIdStr = String(requestId);
@@ -134,7 +119,6 @@ router.post('/accept-request', async (req, res) => {
       return res.status(404).json({ message: "Request or volunteer not found." });
     }
 
-    // Medical request rule - relies on Admin setting isMedicalVerified
     if (request.emergencyType.toLowerCase() === "medical") {
       if (!volunteer.isMedicalVerified) {
         return res.status(403).json({
@@ -143,7 +127,7 @@ router.post('/accept-request', async (req, res) => {
       }
     }
 
-    // Update the assignment
+   
     const assignment = await prisma.assignment.findFirst({
       where: { requestId, volunteerId },
       orderBy: { id: 'desc' }
@@ -159,8 +143,6 @@ router.post('/accept-request', async (req, res) => {
         data: { requestId, volunteerId, isAccepted: true }
       });
     }
-
-    // Update request & volunteer status
     await prisma.request.update({
       where: { id: requestId },
       data: { status: "Assigned" }
@@ -182,46 +164,39 @@ router.post('/accept-request', async (req, res) => {
 });
 
 
-/* ----------------------------------------
-   VOLUNTEER DECLINE REQUEST  (PUT /decline/:id)
------------------------------------------ */
 router.put('/decline/:id', async (req, res) => {
   const requestId = parseInt(req.params.id);
-  // Get raw value from body (might be string/corrupted)
   const { volunteerId: rawVolunteerId } = req.body;
 
-  // FIX: Ensure volunteerId is correctly parsed as an integer for database use
   const volunteerId = parseInt(rawVolunteerId);
   const reqIdStr = String(requestId);
 
-  // Input Validation check
   if (isNaN(requestId) || isNaN(volunteerId)) {
     return res.status(400).json({ message: "Invalid Request ID or Volunteer ID provided." });
   }
 
   try {
-    // 1. Record decline in assignment (Find/Create logic is necessary and correct)
     let assignment = await prisma.assignment.findFirst({
       where: { requestId, volunteerId },
       orderBy: { id: 'desc' }
     });
 
     if (assignment) {
+    
       assignment = await prisma.assignment.update({
         where: { id: assignment.id },
         data: { declineCount: assignment.declineCount + 1, isAccepted: false }
       });
     } else {
-      // Create a new record if it doesn't exist
+     
       assignment = await prisma.assignment.create({
         data: { requestId, volunteerId, declineCount: 1, isAccepted: false }
       });
     }
 
-    // 2. Make volunteer available again
+    
     await updateVolunteerStatus(volunteerId, 'Available');
 
-    // 3. Count UNIQUE decliners
     const declineRecords = await prisma.assignment.findMany({
       where: { requestId, declineCount: { gte: 1 } },
       select: { volunteerId: true }
@@ -229,7 +204,7 @@ router.put('/decline/:id', async (req, res) => {
 
     const uniqueDecliners = new Set(declineRecords.map(d => d.volunteerId));
 
-    // 4. If 3+ volunteers declined → "Reassign"
+   
     if (uniqueDecliners.size >= 3) {
       await prisma.request.update({
         where: { id: requestId },
@@ -248,7 +223,6 @@ router.put('/decline/:id', async (req, res) => {
       });
     }
 
-    // 5. Otherwise return to queue
     await prisma.request.update({
       where: { id: requestId },
       data: { status: 'Pending' }
@@ -263,16 +237,14 @@ router.put('/decline/:id', async (req, res) => {
     res.json({ message: "Decline recorded, returned to queue." });
 
   } catch (err) {
-    // 🚨 Log the specific database error to the console
-    console.error("Decline error (Unspecific DB Failure):", err);
+
+    console.error("Decline error:", err);
     res.status(500).json({ message: "Failed to record decline." });
   }
 });
 
 
-/* ----------------------------------------
-   VOLUNTEER AVAILABLE TASKS
------------------------------------------ */
+
 router.get('/available-tasks/:volunteerId', async (req, res) => {
   const volunteerId = parseInt(req.params.volunteerId);
 
@@ -291,6 +263,18 @@ router.get('/available-tasks/:volunteerId', async (req, res) => {
     const requests = await prisma.request.findMany({
       where: {
         status: { in: ['Pending', 'Assigned', 'Conflict'] },
+
+        // 🔥 FIX 2: Add a NOT filter to exclude tasks that THIS volunteer has declined
+        NOT: {
+          assignments: {
+            some: {
+              volunteerId: volunteerId,
+              declineCount: { gt: 0 } // Exclude if this volunteer has any recorded decline count
+            }
+          }
+        },
+
+        // Keep existing logic for tasks the volunteer is assigned to or in conflict with
         OR: [
           { status: 'Pending' },
           { status: 'Assigned', assignments: { some: { volunteerId } } },
@@ -322,32 +306,26 @@ router.get('/available-tasks/:volunteerId', async (req, res) => {
 });
 
 
-/* ----------------------------------------
-   ADMIN COMPLETE REQUEST (resolve/:id/admin)
------------------------------------------ */
 router.put('/resolve/:id/admin', async (req, res) => {
   const requestId = parseInt(req.params.id);
 
   try {
-    // 1. Find the currently assigned volunteer
+
     const currentAssignment = await prisma.assignment.findFirst({
       where: { requestId, isAccepted: true },
       orderBy: { id: 'desc' },
       select: { volunteerId: true }
     });
 
-    // 2. Mark the request as completed
     await prisma.request.update({
       where: { id: requestId },
       data: { status: 'Completed' }
     });
 
-    // 3. Free the volunteer (if one was assigned)
     if (currentAssignment?.volunteerId) {
       await updateVolunteerStatus(currentAssignment.volunteerId, 'Available');
     }
 
-    // 4. Send socket notification for cleanup/re-fetch on client side
     io.to(String(requestId)).emit('system_notification', {
       status: 'COMPLETED',
       text: "✅ Request closed by Administrator.",

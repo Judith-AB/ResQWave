@@ -4,7 +4,7 @@ import "./index.css";
 import ChatBox from './ChatBox';
 import io from 'socket.io-client';
 import { useVolunteers } from "./context/VolunteerContext";
-import { useNavigate } from "react-router-dom";
+// Removed: import { useNavigate } from "react-router-dom"; 
 
 const ASSIGNMENT_API_URL = "http://localhost:3001/api/assignments";
 const SOCKET_SERVER_URL = "http://localhost:3001";
@@ -36,27 +36,25 @@ const getUrgencyStyle = (score) => {
 
 const VolunteerDashboard = () => {
 
-  // 1. ALL HOOKS MUST BE DECLARED UNCONDITIONALLY AT THE TOP
+  // 1. ALL HOOKS AT THE TOP, UNCONDITIONALLY
   const { volunteerInfo, logoutVolunteer } = useVolunteers();
-  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [myActiveAssignment, setMyActiveAssignment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeChatRequest, setActiveChatRequest] = useState(null);
 
-  // 2. DERIVE VARIABLES SAFELY (outside of hooks, inside function)
+  // 2. DERIVE VARIABLES SAFELY 
   const user = volunteerInfo;
   const volunteerId = user?.id; // CRITICAL FIX: Use optional chaining for safety
 
   // 3. CRITICAL RENDER GUARD (This must be the only conditional return)
   if (!volunteerInfo || !volunteerInfo.id) {
-    return null; // Render NULL immediately, yielding control to the Router.
+    return null; // Render nothing if unauthenticated, letting the Router handle the redirect.
   }
 
-  // --- Data Fetching Functions (Definitions) ---
+  // 4. DATA FETCHING FUNCTIONS 
   const fetchData = () => {
     setLoading(true);
-    // ID is guaranteed to be valid here due to the guard above
     fetch(`${ASSIGNMENT_API_URL}/available-tasks/${volunteerId}`)
       .then(res => res.json())
       .then(data => {
@@ -82,7 +80,7 @@ const VolunteerDashboard = () => {
     fetchActiveAssignment();
   };
 
-  // 4. USE EFFECT (Runs the fetching logic only if ID is present)
+  // 5. USE EFFECT 
   useEffect(() => {
     if (volunteerId) {
       fetchData();
@@ -154,8 +152,10 @@ const VolunteerDashboard = () => {
         } else {
           alert("Declined — request returned to queue.");
         }
+        // FIX for task list refresh after decline
         fetchData();
         fetchActiveAssignment();
+        // End fix
       } else {
         alert(data.message || "Decline failed.");
       }
@@ -172,11 +172,9 @@ const VolunteerDashboard = () => {
     });
   };
 
- const handleLogout = () => {
-    logoutVolunteer(); // Clears Auth State (Admin is now unauthenticated)
-
-    // 🔥 Alternative FIX: Use window.location.href to force a hard reload to the root path.
-    // This clears any lingering state that might be auto-triggering the modal.
+  const handleLogout = () => {
+    logoutVolunteer();
+    // 🔥 FINAL FAILSAFE: Use window.location.href to force hard redirect to Landing Page
     window.location.href = "/";
   };
 
@@ -289,6 +287,7 @@ const VolunteerDashboard = () => {
                           <span style={{
                             padding: "4px 8px",
                             borderRadius: 10,
+                            background: urgency.background,
                             color: urgency.color,
                             fontWeight: 700
                           }}>
