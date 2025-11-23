@@ -1,9 +1,9 @@
-// --- frontend/AdminDashboard.jsx ---
 import React, { useState, useEffect } from "react";
 import { useAuth } from "./context/AuthContext";
 import ChatBox from "./ChatBox";
 import io from "socket.io-client";
 import "./index.css";
+import { useNavigate } from "react-router-dom"; 
 
 const REQUEST_API_URL = "http://localhost:3001/api/requests";
 const ASSIGNMENT_API_URL = "http://localhost:3001/api/assignments";
@@ -11,6 +11,10 @@ const API_AUTH_URL = "http://localhost:3001/api/auth";
 const SOCKET_SERVER_URL = "http://localhost:3001";
 
 const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
+
+const UserIcon = () => (
+  <span style={{ color: "#2196F3", marginRight: 6 }}>👤</span>
+);
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -29,8 +33,6 @@ const getStatusColor = (status) => {
   }
 };
 
-const UserIcon = () => <span style={{ color: "#2196F3", marginRight: 6 }}>👤</span>;
-
 const StatCard = ({ title, value, color }) => (
   <div
     style={{
@@ -48,6 +50,8 @@ const StatCard = ({ title, value, color }) => (
 
 const AdminDashboard = () => {
   const { logoutAdmin } = useAuth();
+  const navigate = useNavigate(); 
+
   const [requests, setRequests] = useState([]);
   const [volunteers, setVolunteers] = useState([]);
   const [pendingVolunteers, setPendingVolunteers] = useState([]);
@@ -59,6 +63,7 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+     
       const res = await fetch(`${REQUEST_API_URL}/pending`);
       const data = await res.json();
       if (res.ok) {
@@ -66,11 +71,12 @@ const AdminDashboard = () => {
         setVolunteers(data.volunteers || []);
       }
 
+     
       const pv = await fetch(`${API_AUTH_URL}/pending-volunteers`);
       const pvData = await pv.json();
       setPendingVolunteers(pvData.pending || []);
     } catch (err) {
-      console.error("Admin fetch error", err);
+      console.error("Error fetching dashboard data:", err);
     } finally {
       setLoading(false);
     }
@@ -80,9 +86,13 @@ const AdminDashboard = () => {
     fetchData();
     if (!socket.connected) socket.connect();
     socket.emit("join_room", "admin_room");
-
     socket.on("system_notification", () => fetchData());
-    return () => socket.off("system_notification");
+
+    // Cleanup on unmount
+    return () => {
+      socket.off("system_notification");
+      socket.disconnect();
+    }
   }, []);
 
   const handleAssign = async (requestId) => {
@@ -92,92 +102,175 @@ const AdminDashboard = () => {
     await fetch(`${ASSIGNMENT_API_URL}/admin-assign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestId, volunteerId: parseInt(volunteerId) }),
+      body: JSON.stringify({
+        requestId,
+        volunteerId: parseInt(volunteerId),
+      }),
     });
 
     fetchData();
   };
 
+
   const handleComplete = async (requestId) => {
-    if (!window.confirm("Mark completed?")) return;
+    if (!window.confirm("Mark as completed?")) return;
     await fetch(`${ASSIGNMENT_API_URL}/resolve/${requestId}/admin`, {
       method: "PUT",
     });
+
     fetchData();
   };
 
   const handleVerifyMedical = async (userId) => {
     await fetch(`${API_AUTH_URL}/verify-medical/${userId}`, { method: "PUT" });
+    alert("Medical proof verified! (The volunteer is now eligible for medical tasks)");
     fetchData();
   };
 
-  if (loading) return <div style={{ padding: "100px", textAlign: "center" }}>Loading...</div>;
+  const handleApproveVolunteer = async (userId) => {
+    await fetch(`${API_AUTH_URL}/approve-volunteer/${userId}`, {
+      method: "PUT",
+    });
+    alert("Volunteer approved! (The volunteer can now sign in)");
+    fetchData();
+  };
+
+  const handleRejectVolunteer = async (userId) => {
+    if (!window.confirm("Reject and delete this volunteer?")) return;
+
+    await fetch(`${API_AUTH_URL}/reject-volunteer/${userId}`, {
+      method: "DELETE",
+    });
+
+    alert("Volunteer rejected & deleted.");
+    fetchData();
+  };
+
+  const handleLogout = () => {
+    logoutAdmin(); 
+
+    
+    window.location.href = "/";
+  };
+  if (loading)
+    return (
+      <div style={{ padding: 80, textAlign: "center" }}>
+        Loading dashboard...
+      </div>
+    );
 
   const totalRequests = requests.length;
   const conflictRequests = requests.filter((r) =>
     ["Conflict", "Reassign", "Atmost"].includes(r.status)
   ).length;
-  const assignedRequests = requests.filter((r) => r.status === "Assigned").length;
-  const availableVols = volunteers.filter((v) => !v.status || v.status === "Available").length;
+  const assignedRequests = requests.filter((r) => r.status === "Assigned")
+    .length;
+  const availableVols = volunteers.filter((v) => v.status === "Available")
+    .length;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f7fa", padding: "50px 20px" }}>
+    <div style={{ background: "#f5f7fa", minHeight: "100vh", padding: "40px 20px" }}>
 
-      {/* HEADER */}
-      <header style={{ maxWidth: 1200, margin: "0 auto 24px", display: "flex", justifyContent: "space-between" }}>
+      <header
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto 20px",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
         <h1>Coordination Dashboard</h1>
-        <button onClick={logoutAdmin} style={{ padding: "10px 18px", background: "#d32f2f", color: "white", borderRadius: 8 }}>
+
+        <button
+          onClick={handleLogout} 
+          style={{
+            background: "none",
+            border: "none",
+            color: "#d32f2f",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
           LOG OUT
         </button>
       </header>
 
-      {/* STATS */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+     
+      <div
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          display: "grid",
+          gridTemplateColumns: "repeat(4,1fr)",
+          gap: 16,
+        }}
+      >
         <StatCard title="Total Active" value={totalRequests} color="#f44336" />
         <StatCard title="Assigned" value={assignedRequests} color="#FF9800" />
-        <StatCard title="Conflicts / Reassign" value={conflictRequests} color="#d32f2f" />
+        <StatCard title="Conflicts" value={conflictRequests} color="#d32f2f" />
         <StatCard title="Available Volunteers" value={availableVols} color="#2196F3" />
       </div>
 
-      {/* TABS */}
-      <div style={{ maxWidth: 1200, margin: "20px auto", display: "flex", borderBottom: "2px solid #ddd" }}>
+      <div
+        style={{
+          maxWidth: 1200,
+          margin: "20px auto",
+          display: "flex",
+          borderBottom: "2px solid #ddd",
+        }}
+      >
         <button onClick={() => setActiveTab("requests")} style={tabStyle(activeTab === "requests", "red")}>
-          Help Requests
+          Requests
         </button>
         <button onClick={() => setActiveTab("volunteers")} style={tabStyle(activeTab === "volunteers", "green")}>
           Volunteers
         </button>
         <button onClick={() => setActiveTab("new-volunteers")} style={tabStyle(activeTab === "new-volunteers", "#7953f3")}>
-          New Volunteers
+          New Volunteers ({pendingVolunteers.length})
         </button>
       </div>
 
-      {/* ------------ REQUESTS TAB ------------ */}
+      {/* ------------------ REQUESTS TAB ------------------ */}
       {activeTab === "requests" && (
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          {requests.length === 0 && <p style={{ opacity: 0.6, padding: 20 }}>No active requests.</p>}
           {requests.map((req) => {
             const statusColor = getStatusColor(req.status);
             const assigned = req.assignments?.[0];
-            const assignedName = assigned?.volunteer?.fullName || "Unassigned";
+            const assignedName =
+              assigned?.volunteer?.fullName || "Unassigned";
 
+            
             const candidates = volunteers.filter(
               (v) =>
-                (!req.emergencyType.toLowerCase().includes("medical") ||
+                ((req.emergencyType || '').toLowerCase() !== "medical" ||
                   v.isMedicalVerified) &&
-                (v.status === "Available" || !v.status)
+                v.status === "Available"
             );
 
             return (
               <div key={req.id} style={requestCardStyle(statusColor.accent)}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <div>
-                    <h3>{req.emergencyType} | {req.location} (Score {req.urgencyScore})</h3>
-                    <p>{req.victimName} | {req.contact}</p>
+                    <h3>
+                      {req.emergencyType} | {req.location}
+                    </h3>
+                    <p>
+                      {req.victimName} | {req.contact}
+                    </p>
                   </div>
-                  <div style={statusLabelStyle(statusColor)}>{req.status}</div>
+                  <div style={statusLabelStyle(statusColor)}>
+                    {req.status}
+                  </div>
                 </div>
 
                 <div style={reqActionRow}>
+
                   {["Pending", "Reassign", "Atmost"].includes(req.status) ? (
                     <div style={{ display: "flex", gap: 8 }}>
                       <select
@@ -190,9 +283,11 @@ const AdminDashboard = () => {
                         }
                         style={selectStyle}
                       >
-                        <option value="">Select Volunteer</option>
+                        <option value="">Select Volunteer ({candidates.length} available)</option>
                         {candidates.map((v) => (
-                          <option key={v.id} value={v.id}>{v.fullName}</option>
+                          <option key={v.id} value={v.id}>
+                            {v.fullName} {v.isMedicalVerified ? ' (Medical)' : ''}
+                          </option>
                         ))}
                       </select>
 
@@ -204,27 +299,35 @@ const AdminDashboard = () => {
                       </button>
                     </div>
                   ) : (
-                    <div style={{ fontWeight: "bold" }}>Assigned to: {assignedName}</div>
+                    <b>Assigned to: {assignedName}</b>
                   )}
 
                   <div style={{ display: "flex", gap: 8 }}>
                     {(req.status === "Assigned" ||
-                      req.status === "Conflict" ||
-                      req.status === "Reassign") && (
-                      <button
-                        onClick={() => setActiveChat({ requestId: req.id, senderName: "Admin" })}
-                        style={chatBtn}
-                      >
-                        Chat
-                      </button>
-                    )}
+                      req.status === "Conflict") && (
+                        <button
+                          onClick={() =>
+                            setActiveChat({
+                              requestId: req.id,
+                              senderName: "Admin",
+                            })
+                          }
+                          style={chatBtn}
+                        >
+                          Chat
+                        </button>
+                      )}
 
                     {req.status !== "Completed" && (
-                      <button onClick={() => handleComplete(req.id)} style={completeBtn}>
+                      <button
+                        onClick={() => handleComplete(req.id)}
+                        style={completeBtn}
+                      >
                         Complete
                       </button>
                     )}
                   </div>
+
                 </div>
               </div>
             );
@@ -232,93 +335,37 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* ------------ VOLUNTEERS TAB ------------ */}
+    
       {activeTab === "volunteers" && (
         <div style={gridContainer}>
-          {volunteers.map((v) => {
-            const hasPdf = v.proofs?.length > 0;
-            const needsVerification = hasPdf && !v.isMedicalVerified;
-
-            return (
-              <div key={v.id} style={volunteerCard(v.isMedicalVerified, needsVerification, v.status)}>
-                <h3><UserIcon /> {v.fullName}</h3>
-                <p>📍 {v.location}</p>
-                <p>📞 {v.contact}</p>
-                <p>🧩 Skills: <b>{v.skills || "N/A"}</b></p>
-
-                <div style={volStatusRow}>
-                  <span style={volStatusBadge(v.status)}>{v.status || "Available"}</span>
-
-                  {v.isMedicalVerified ? (
-                    <span style={medVerifiedBadge}>MEDICAL VERIFIED</span>
-                  ) : needsVerification ? (
-                    <button
-                      onClick={() => handleVerifyMedical(v.id)}
-                      style={verifyBtn}
-                    >
-                      VERIFY PROOF
-                    </button>
-                  ) : (
-                    <span style={{ color: "#777" }}>General Volunteer</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {volunteers.length === 0 && <p style={{ opacity: 0.6, padding: 20 }}>No approved volunteers available.</p>}
+          {volunteers.map((v) => (
+            <VolunteerCard
+              key={v.id}
+              volunteer={v}
+              handleVerify={handleVerifyMedical}
+            />
+          ))}
         </div>
       )}
 
-      {/* ------------ NEW VOLUNTEERS TAB ------------ */}
       {activeTab === "new-volunteers" && (
         <div style={gridContainer}>
           {pendingVolunteers.length === 0 && (
-            <div style={{ fontSize: "1.3rem", opacity: 0.6 }}>No pending volunteers.</div>
+            <div style={{ fontSize: "1.3rem", opacity: 0.6, gridColumn: 'span 3' }}>
+              No pending volunteers.
+            </div>
           )}
 
-          {pendingVolunteers.map((v) => {
-            const hasPdf = v.proofs?.length > 0;
-
-            return (
-              <div key={v.id} style={newVolCard}>
-                <h3><UserIcon /> {v.fullName}</h3>
-                <p>📍 {v.location}</p>
-                <p>📞 {v.contact}</p>
-                <p>🧩 Skills: <b>{v.skills || "N/A"}</b></p>
-
-                {hasPdf && (
-                  <a
-                    href={`http://localhost:3001${v.proofs[0].proofUrl}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={viewPdfBtn}
-                  >
-                    View Medical Proof
-                  </a>
-                )}
-
-                <button
-                  onClick={async () => {
-                    await fetch(`${API_AUTH_URL}/approve-volunteer/${v.id}`, {
-                      method: "PUT",
-                    });
-
-                    // Automatically verify medical if PDF exists
-                    if (hasPdf) {
-                      await fetch(`${API_AUTH_URL}/verify-medical/${v.id}`, {
-                        method: "PUT",
-                      });
-                    }
-
-                    alert("Volunteer approved!");
-                    fetchData();
-                  }}
-                  style={approveBtn}
-                >
-                  Approve Volunteer
-                </button>
-              </div>
-            );
-          })}
+          {pendingVolunteers.map((v) => (
+            <NewVolunteerCard
+              key={v.id}
+              volunteer={v}
+              approve={handleApproveVolunteer}
+              reject={handleRejectVolunteer}
+              verify={handleVerifyMedical}
+            />
+          ))}
         </div>
       )}
 
@@ -333,7 +380,114 @@ const AdminDashboard = () => {
   );
 };
 
-/* ---------- STYLES ---------- */
+
+const VolunteerCard = ({ volunteer, handleVerify }) => {
+  const needsVerify = volunteer.proofs?.length > 0 && !volunteer.isMedicalVerified;
+
+  return (
+    <div
+      style={volunteerCardStyle(
+        volunteer.isMedicalVerified,
+        needsVerify,
+        volunteer.status
+      )}
+    >
+      <h3>
+        <UserIcon /> {volunteer.fullName}
+      </h3>
+      <p>📍 {volunteer.location}</p>
+      <p>📞 {volunteer.contact}</p>
+      <p>
+        🛠️ Skills: <b>{volunteer.skills || 'General'}</b>
+      </p>
+
+      <div style={volStatusRow}>
+        <span style={volStatusBadge(volunteer.status)}>
+          {volunteer.status}
+        </span>
+
+        {volunteer.isMedicalVerified ? (
+          <span style={medVerifiedBadge}>MEDICAL VERIFIED</span>
+        ) : needsVerify ? (
+          <button
+            onClick={() => handleVerify(volunteer.id)}
+            style={verifyBtn}
+          >
+            VERIFY PROOF
+          </button>
+        ) : (
+          <span style={{ color: "#555" }}>General Volunteer</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const NewVolunteerCard = ({ volunteer, approve, reject, verify }) => {
+  const hasPdf = volunteer.proofs?.length > 0;
+  
+  const needsVerify = hasPdf && !volunteer.isMedicalVerified;
+
+  return (
+    <div style={newVolCard}>
+      <h3 style={{ marginBottom: "6px" }}>
+        <UserIcon /> {volunteer.fullName}
+      </h3>
+
+      <p>📍 {volunteer.location}</p>
+      <p>📞 {volunteer.contact}</p>
+      <p>
+        🛠️ Skills: <b>{volunteer.skills || 'General'}</b>
+      </p>
+
+   
+      <div style={actionRow}>
+   
+        {hasPdf && (
+          <a
+            href={`http://localhost:3001${volunteer.proofs[0].proofUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={viewPdfBtn}
+          >
+            View Proof
+          </a>
+        )}
+
+        <button
+          onClick={() => approve(volunteer.id)}
+          style={approveBtn}
+        >
+          Approve Access
+        </button>
+
+        {needsVerify && (
+          <button
+            onClick={() => verify(volunteer.id)}
+            style={verifyBtn}
+          >
+            Verify Medical
+          </button>
+        )}
+
+        <button
+          onClick={() => reject(volunteer.id)}
+          style={rejectBtn}
+        >
+          Reject
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
+const actionRow = {
+  marginTop: "14px",
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap",
+};
 
 const tabStyle = (active, color) => ({
   padding: "10px 20px",
@@ -341,6 +495,7 @@ const tabStyle = (active, color) => ({
   background: "none",
   borderBottom: active ? `4px solid ${color}` : "4px solid transparent",
   fontWeight: "bold",
+  cursor: "pointer",
 });
 
 const requestCardStyle = (accent) => ({
@@ -355,7 +510,7 @@ const requestCardStyle = (accent) => ({
 const statusLabelStyle = (status) => ({
   background: status.background,
   color: status.text,
-  padding: "5px 12px",
+  padding: "6px 12px",
   borderRadius: 8,
   fontWeight: "bold",
 });
@@ -366,10 +521,37 @@ const reqActionRow = {
   justifyContent: "space-between",
 };
 
-const selectStyle = { padding: 8, borderRadius: 8 };
-const assignBtn = { background: "#FF9800", padding: "8px 12px", borderRadius: 8, color: "white" };
-const chatBtn = { background: "#2196F3", padding: "8px 12px", borderRadius: 8, color: "white" };
-const completeBtn = { background: "#4CAF50", padding: "8px 12px", borderRadius: 8, color: "white" };
+const selectStyle = {
+  padding: 8,
+  borderRadius: 8,
+};
+
+const assignBtn = {
+  background: "#FF9800",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+};
+
+const chatBtn = {
+  background: "#2196F3",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+};
+
+const completeBtn = {
+  background: "#4CAF50",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+};
 
 const gridContainer = {
   maxWidth: 1200,
@@ -380,16 +562,19 @@ const gridContainer = {
   padding: "1.5rem 0",
 };
 
-const volunteerCard = (verified, needsVerification, status) => ({
+const volunteerCardStyle = (verified, pending, status) => ({
   background: "white",
   padding: "1.4rem",
   borderRadius: "12px",
   boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-  borderLeft: `6px solid ${
-    verified ? "#4CAF50" :
-    needsVerification ? "#FF9800" :
-    status === "Available" ? "#2196F3" : "#FF9800"
-  }`,
+  borderLeft: `6px solid ${verified
+    ? "#4CAF50"
+    : pending
+      ? "#FF9800"
+      : status === "Available"
+        ? "#2196F3"
+        : "#FF9800"
+    }`,
 });
 
 const volStatusRow = {
@@ -407,8 +592,19 @@ const volStatusBadge = (status) => ({
   fontWeight: 600,
 });
 
-const medVerifiedBadge = { color: "#4CAF50", fontWeight: "bold" };
-const verifyBtn = { background: "#FF9800", color: "white", padding: "6px 10px", borderRadius: 8 };
+const medVerifiedBadge = {
+  color: "#4CAF50",
+  fontWeight: "bold",
+};
+
+const verifyBtn = {
+  background: "#FF9800",
+  padding: "8px 12px",
+  borderRadius: 8,
+  color: "white",
+  border: "none",
+  cursor: "pointer",
+};
 
 const newVolCard = {
   background: "white",
@@ -419,21 +615,34 @@ const newVolCard = {
 };
 
 const viewPdfBtn = {
-  display: "inline-block",
   background: "#2196F3",
   color: "white",
   padding: "8px 12px",
   borderRadius: 8,
-  marginTop: 10,
   textDecoration: "none",
+  fontWeight: 600,
+  flex: 1,
+  textAlign: "center",
 };
 
 const approveBtn = {
-  marginTop: 12,
   background: "#4CAF50",
   color: "white",
-  padding: "10px 14px",
+  padding: "8px 12px",
   borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+  flex: 1,
+};
+
+const rejectBtn = {
+  background: "#d32f2f",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+  flex: 1,
 };
 
 export default AdminDashboard;

@@ -1,6 +1,8 @@
+
 import React, { useState } from "react";
 import "./index.css";
 import { useAuth } from "./context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = "http://localhost:3001/api/auth";
 
@@ -13,18 +15,19 @@ const Eye = () => <span>👁️</span>;
 
 const AdminSignInForm = ({ onClose }) => {
   const { loginAdmin } = useAuth();
+  const navigate = useNavigate(); 
+
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  
+
   const handleChange = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
     setError("");
   };
 
-  // Validation function
   const validateForm = () => {
     const username = credentials.username.trim();
     const password = credentials.password.trim();
@@ -32,12 +35,9 @@ const AdminSignInForm = ({ onClose }) => {
     if (!username) return "Username cannot be empty.";
     if (!password) return "Password cannot be empty.";
     if (password.length < 6) return "Password must be at least 6 characters long.";
-
-    
     if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
       return "Password must contain at least one letter and one number.";
     }
-
     return null;
   };
 
@@ -68,7 +68,8 @@ const AdminSignInForm = ({ onClose }) => {
       if (response.ok && data.role === 'admin') {
         loginAdmin();
         alert("Admin authentication successful!");
-        onClose();
+        onClose(); 
+        navigate("/admin/dashboard"); 
       } else {
         setError(data.message || "Invalid username or password. Please try again.");
       }
@@ -79,6 +80,11 @@ const AdminSignInForm = ({ onClose }) => {
       setIsSubmitting(false);
     }
   };
+
+  const handleCancel = () => {
+    if (onClose) onClose();
+  };
+
 
   return (
     <div className="form-overlay">
@@ -92,11 +98,11 @@ const AdminSignInForm = ({ onClose }) => {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <h2 style={{ margin: 0 }}>
+          <h2 style={{ margin: 0,color:"white" }}>
             <Shield /> Admin Access
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleCancel}
             style={{
               background: 'none',
               border: 'none',
@@ -169,14 +175,6 @@ const AdminSignInForm = ({ onClose }) => {
             </div>
           </div>
 
-          <div style={{
-          
-            borderRadius: '4px',
-            fontSize: '0.9rem'
-          }}>
-            
-          </div>
-
           <div className="form-actions" style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem' }}>
             <button
               type="submit"
@@ -193,7 +191,7 @@ const AdminSignInForm = ({ onClose }) => {
             </button>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleCancel}
               disabled={isSubmitting}
               className="btn-secondary"
               style={{ flex: 1, padding: '0.75rem', background: '#ccc', color: '#333' }}

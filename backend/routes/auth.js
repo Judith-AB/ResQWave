@@ -1,4 +1,4 @@
-// --- backend/routes/auth.js ---
+// --- backend/routes/auth.js (FINAL SECURE AND FUNCTIONAL VERSION) ---
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../src/client.js';
@@ -12,13 +12,26 @@ const router = express.Router();
 // Setup file path helpers
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// CORRECT PATH: Step up one level from 'routes' and find 'uploads/proofs'
+const UPLOADS_PATH = path.join(__dirname, '../uploads/proofs');
+
+// FIX: Function to ensure the Multer target directory exists
+const createUploadsDirectory = async () => {
+    try {
+        await fs.mkdir(UPLOADS_PATH, { recursive: true });
+        console.log(`Upload directory created/verified at: ${UPLOADS_PATH}`);
+    } catch (e) {
+        console.error("Failed to create upload directory:", e);
+    }
+};
+createUploadsDirectory(); // CALL IT IMMEDIATELY
 
 // ------------------------------------------------------------------
 // MULTER STORAGE FOR MEDICAL PDF UPLOAD
 // ------------------------------------------------------------------
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, '../../uploads/proofs'));
+        cb(null, UPLOADS_PATH);
     },
     filename: (req, file, cb) => {
         cb(null, req.body.username + '-' + Date.now() + path.extname(file.originalname));
@@ -32,25 +45,20 @@ const upload = multer({ storage: storage });
 // ------------------------------------------------------------------
 router.post('/signup', upload.single('medicalProof'), async (req, res) => {
     const {
-        fullName,
-        contact,
-        location,
-        username,
-        password,
-        isMedicalCertified,
-        skills
+        fullName, contact, location, username, password, isMedicalCertified, skills
     } = req.body;
 
     const proofFile = req.file;
     const proofPath = proofFile ? `/uploads/proofs/${proofFile.filename}` : null;
     const certified = isMedicalCertified === 'true';
 
+    // Cleanup file if required fields are missing
     if (!username || !password || !fullName) {
         if (proofFile) await fs.unlink(proofFile.path);
         return res.status(400).json({ message: "Missing required fields." });
     }
 
-    // If user says they are certified, they MUST upload PDF
+    // Enforce proof upload if certified
     if (certified && !proofPath) {
         return res.status(400).json({ message: "Medical proof required." });
     }
@@ -59,7 +67,6 @@ router.post('/signup', upload.single('medicalProof'), async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // Newly registered volunteers wait for admin approval
         const newUser = await prisma.user.create({
             data: {
                 fullName,
@@ -70,12 +77,11 @@ router.post('/signup', upload.single('medicalProof'), async (req, res) => {
                 skills: skills || null,
                 isVolunteer: true,
                 isApproved: false,
-                isMedicalVerified: false,
+                isMedicalVerified: false, // Default to FALSE, relies on Admin verification
                 status: "Available"
             }
         });
 
-        // ⭐ ALWAYS save proof if a file was uploaded
         if (proofPath) {
             await prisma.proof.create({
                 data: {
@@ -115,17 +121,8 @@ router.post('/login', async (req, res) => {
         const user = await prisma.user.findUnique({
             where: { username },
             select: {
-                id: true,
-                username: true,
-                fullName: true,
-                passwordHash: true,
-                contact: true,
-                location: true,
-                skills: true,
-                isVolunteer: true,
-                isMedicalVerified: true,
-                isApproved: true,
-                status: true
+                id: true, username: true, fullName: true, passwordHash: true, contact: true, location: true,
+                skills: true, isVolunteer: true, isMedicalVerified: true, isApproved: true, status: true
             }
         });
 
@@ -134,17 +131,17 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) return res.status(401).json({ message: "Invalid username or password." });
 
+        // Volunteer Approval Gate
         if (user.isVolunteer && !user.isApproved) {
             return res.status(403).json({ message: "Your account is pending admin approval." });
         }
+        
 
         const role = user.username === "admin" ? "admin" : "volunteer";
         const { passwordHash, ...safeUser } = user;
 
         res.status(200).json({
-            message: "Login successful!",
-            ...safeUser,
-            role
+            message: "Login successful!", ...safeUser, role
         });
 
     } catch (err) {
@@ -160,15 +157,10 @@ router.post('/login', async (req, res) => {
 router.get('/pending-volunteers', async (req, res) => {
     try {
         const pending = await prisma.user.findMany({
-            where: {
-                isVolunteer: true,
-                isApproved: false
-            },
+            where: { isVolunteer: true, isApproved: false },
             include: { proofs: true }
         });
-
         res.json({ pending });
-
     } catch (e) {
         console.error("Fetch Pending Volunteers Error:", e);
         res.status(500).json({ message: "Failed to fetch pending volunteers." });
@@ -177,47 +169,19 @@ router.get('/pending-volunteers', async (req, res) => {
 
 
 // ------------------------------------------------------------------
-// 4️⃣ APPROVE VOLUNTEER (Admin)
-// ⭐ If volunteer uploaded a PDF → medically verified
-// ⭐ If no PDF → not medically verified
+// 4️⃣ APPROVE VOLUNTEER (Admin) - Grants Portal Access
 // ------------------------------------------------------------------
 router.put('/approve-volunteer/:userId', async (req, res) => {
     const userId = parseInt(req.params.userId);
 
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { proofs: true }
-        });
-
-        if (!user) {
-            return res.status(404).json({ message: "Volunteer not found" });
-        }
-
-        const hasPdf = user.proofs && user.proofs.length > 0;
-
-        // If uploaded proof, mark as verified automatically
-        if (hasPdf) {
-            await prisma.proof.updateMany({
-                where: { userId },
-                data: { isVerified: true }
-            });
-        }
-
+        // FIX: Only update the approval status. Do NOT auto-verify medical status.
         const updatedUser = await prisma.user.update({
             where: { id: userId },
-            data: {
-                isApproved: true,
-                isMedicalVerified: hasPdf ? true : false
-            }
+            data: { isApproved: true }
         });
 
-        res.json({
-            message: hasPdf
-                ? "Volunteer approved + medically verified!"
-                : "Volunteer approved!",
-            user: updatedUser
-        });
+        res.json({ message: "Volunteer approved!", user: updatedUser });
 
     } catch (e) {
         console.error("Approve Volunteer Error:", e);
@@ -227,7 +191,7 @@ router.put('/approve-volunteer/:userId', async (req, res) => {
 
 
 // ------------------------------------------------------------------
-// 5️⃣ MANUAL MEDICAL VERIFICATION (Admin)
+// 5️⃣ MANUAL MEDICAL VERIFICATION (Admin) - Grants Medical Eligibility
 // ------------------------------------------------------------------
 router.put('/verify-medical/:userId', async (req, res) => {
     const userId = parseInt(req.params.userId);
@@ -240,7 +204,7 @@ router.put('/verify-medical/:userId', async (req, res) => {
 
         await prisma.proof.updateMany({
             where: { userId },
-            data: { isVerified: true }
+            data: { isVerified: true } // Mark the proof itself as verified
         });
 
         res.json({ message: "Medical proof verified!" });

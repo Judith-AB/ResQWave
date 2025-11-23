@@ -1,9 +1,10 @@
-// --- frontend/HelpRequestForm.jsx ---
+// --- frontend/HelpRequestForm.jsx (FINAL CORRECTED VERSION) ---
 import { useState, useEffect } from "react";
 import "./index.css";
 import { useRequests } from "./context/RequestsContext";
 import { useChat } from "./context/ChatContext";
-import { useVolunteers } from "./context/VolunteerContext";
+// 🛑 FIX 1: We no longer need the useVolunteers import, as it caused the crash.
+// import { useVolunteers } from "./context/VolunteerContext"; 
 import io from "socket.io-client";
 import ConflictModal from "./ConflictModal";
 
@@ -13,11 +14,12 @@ const SOCKET_SERVER_URL = "http://localhost:3001";
 const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
 
 /* =======================================================================
-   VictimStatusChat  (MODIFIED – includes solved + conflict + notifications)
+   VictimStatusChat  (RESUME HELP FIX)
 ======================================================================= */
 const VictimStatusChat = ({ request, onClose }) => {
     const { getMessages, addMessage } = useChat();
-    const { volunteers } = useVolunteers();
+    // 🛑 FIX 2: Removed the line below which caused the "undefined.find" error:
+    // const { volunteers } = useVolunteers(); 
     const { updateRequestStatus } = useRequests();
 
     const [inputText, setInputText] = useState("");
@@ -27,13 +29,9 @@ const VictimStatusChat = ({ request, onClose }) => {
     const messages = getMessages(request.id);
     const reqIdStr = String(request.id);
 
-    const assignedVolunteer =
-        volunteers.find(v => v.id === request.assignedVolunteerId) || null;
-
+    // ✅ FIX 3: Simplify volunteer name lookup using data provided by the LookupModal
     const volunteerName =
-        assignedVolunteer?.fullName ||
-        request.assignedVolunteerName ||
-        "A Volunteer";
+        request.assignedVolunteerName || "A Volunteer";
 
     useEffect(() => {
         if (!socket.connected) socket.connect();
@@ -122,9 +120,8 @@ const VictimStatusChat = ({ request, onClose }) => {
                     <h3 style={{ margin: 0, fontSize: "1.2rem" }}>
                         {request.assignedVolunteerId
                             ? `Matched with ${volunteerName}`
-                            : `🚨 Request ID: ${request.id} Pending... (Score: ${
-                                  request.urgencyScore?.toFixed(2) || "?"
-                              })`}
+                            : `🚨 Request ID: ${request.id} Pending... (Score: ${request.urgencyScore?.toFixed(2) || "?"
+                            })`}
                     </h3>
 
                     <button
@@ -293,17 +290,13 @@ const VictimStatusChat = ({ request, onClose }) => {
 };
 
 /* =======================================================================
-   HelpRequestForm – unchanged except linking to updated chat
+   HelpRequestForm – unchanged
 ======================================================================= */
 const HelpRequestForm = ({ onClose }) => {
     const { addRequest, requests } = useRequests();
     const [submittedRequest, setSubmittedRequest] = useState(null);
     const [formData, setFormData] = useState({
-        name: "",
-        contact: "",
-        location: "",
-        emergencyType: "",
-        details: ""
+        name: "", contact: "", location: "", emergencyType: "", details: ""
     });
     const [error, setError] = useState("");
 

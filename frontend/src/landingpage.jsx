@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Essential for Admin button
 import HelpRequestForm from "./HelpRequestForm";
 import VolunteerForm from "./VolunteerForm";
 import AdminSignInForm from "./AdminSignInForm";
 import VolunteerDashboard from "./VolunteerDashboard.jsx";
 import VolunteerSignInModal from "./VolunteerSignInModal";
-import LookupModal from "./LookupModal"; 
+import LookupModal from "./LookupModal";
 
 import "./index.css";
-
-
-import { useVolunteers } from "./context/VolunteerContext"; 
+import { useVolunteers } from "./context/VolunteerContext"; // For global login handling
 import { useRequests } from "./context/RequestsContext";
 
 
@@ -23,14 +22,14 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
           onClick={() => { onClose(); openSignIn(); }}
           style={{ background: 'linear-gradient(135deg, #4CAF50, #388E3C)', border: 'none' }}
         >
-          ✅ Sign In / Check Status
+          Sign In
         </button>
         <button
           className="btn-secondary"
           onClick={() => { onClose(); openSignUp(); }}
           style={{ background: 'linear-gradient(135deg, #2196F3, #1565C0)', border: 'none' }}
         >
-          🤝 Join / Sign Up Now
+          Join / Sign Up Now
         </button>
       </div>
       <button
@@ -50,11 +49,15 @@ const LandingPage = () => {
 
   const [showHelpForm, setShowHelpForm] = useState(false);
   const [showVolunteerForm, setShowVolunteerForm] = useState(false); // Signup
-  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [showAdminForm, setShowAdminForm] = useState(false); // Modal state for admin login
   const [showVolunteerChooser, setShowVolunteerChooser] = useState(false);
   const [showVolunteerSignIn, setShowVolunteerSignIn] = useState(false);
-  const [volunteerUser, setVolunteerUser] = useState(null); // Holds user data if signed in
+  const [volunteerUser, setVolunteerUser] = useState(null); // Local state for immediate rendering (can be simplified later)
   const [showLookupModal, setShowLookupModal] = useState(false);
+
+  // Hooks
+  const navigate = useNavigate();
+  const { loginVolunteer } = useVolunteers(); // 🔥 FIX: Get global login function
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -84,10 +87,12 @@ const LandingPage = () => {
     return () => observer.disconnect();
   }, []);
 
-  
+
+  // 🔥 FIX: Pushes the user data to the global context for persistence and dashboard rendering
   const handleVolunteerSuccess = (userData) => {
     if (userData && userData.id) {
-      setVolunteerUser(userData);
+      loginVolunteer(userData); // Push to global context (AuthContext via VolunteerContext)
+      setVolunteerUser(userData); // Keep local state for immediate re-render compatibility
       setShowVolunteerSignIn(false);
     }
   };
@@ -103,10 +108,10 @@ const LandingPage = () => {
       <header className="header">
         <nav className="nav-container">
           <div className="logo" onClick={() => scrollToSection("hero")}>
-            <div className="logo-icon"><img 
-                src="src/assets/Logo.png" 
-                alt="ResQWave Logo" 
-          style={{ width: "70px",height: "70px"}}  /></div><p> </p>ResQWave
+            <div className="logo-icon"><img
+              src="src/assets/Logo.png"
+              alt="ResQWave Logo"
+              style={{ width: "70px", height: "70px" }} /></div><p> </p>ResQWave
           </div>
 
           <ul className="nav-menu">
@@ -124,9 +129,10 @@ const LandingPage = () => {
             >
               Volunteer Portal
             </button>
+            {/* Admin button reverts to showing local modal */}
             <button className="btn-dashboard" onClick={() => setShowAdminForm(true)}>Admin Dashboard</button>
             <button
-              className="btn-resume-help" 
+              className="btn-resume-help"
               onClick={() => setShowLookupModal(true)}>Resume Help
             </button>
             <button className="btn-help" onClick={() => setShowHelpForm(true)}>Get Help Now</button>
@@ -146,7 +152,9 @@ const LandingPage = () => {
             </p>
             <div className="hero-buttons">
               <button className="btn-primary" onClick={() => setShowHelpForm(true)}>❤️ Request Help</button>
-              <button className="btn-secondary" onClick={() => setShowVolunteerChooser(true)}>🤝 Join as Volunteer</button>
+              <button className="btn-secondary" onClick={() => setShowVolunteerForm(true)}>
+                🤝 Join as Volunteer
+              </button>
             </div>
           </div>
 
@@ -159,7 +167,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-  
+
       <section id="how-it-works" className="how-it-works">
         <div className="section-container">
           <h2 className="section-title">How It Works</h2>
@@ -193,7 +201,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-  
+
       <section id="about" className="about">
         <div className="section-container">
           <h2 className="section-title">About This Project</h2>
@@ -206,12 +214,12 @@ const LandingPage = () => {
       <footer id="contact" className="footer">
         <div className="footer-container">
           <div>
-          <div className="footer-brand"><div className="logo-icon"><img 
-          src="src/assets/Logo.png"  
-          alt="ResQWave Logo" 
-          style={{ width: "65px", height: "65px" }} 
-        />
-</div> <p> </p>Disaster Relief Platform</div>
+            <div className="footer-brand"><div className="logo-icon"><img
+              src="src/assets/Logo.png"
+              alt="ResQWave Logo"
+              style={{ width: "65px", height: "65px" }}
+            />
+            </div> <p> </p>Disaster Relief Platform</div>
             <p className="footer-description">
               A student project demonstrating technology-driven disaster relief coordination.
             </p>
@@ -228,13 +236,13 @@ const LandingPage = () => {
             <h3>Emergency Contact</h3>
             <div className="emergency-contact">
               <h4>24/7 Relief Helpline</h4>
-              <div className="emergency-phone">112</div>
+              <div className="emergency-phone">77-66-55</div>
             </div>
           </div>
         </div>
       </footer>
 
-    
+
       {showHelpForm && <HelpRequestForm onClose={() => setShowHelpForm(false)} />}
       {showVolunteerForm && <VolunteerForm onClose={() => setShowVolunteerForm(false)} />}
       {showAdminForm && <AdminSignInForm onClose={() => setShowAdminForm(false)} />}
@@ -248,7 +256,7 @@ const LandingPage = () => {
         />
       )}
 
-      
+
       {showVolunteerSignIn && (
         <VolunteerSignInModal
           onClose={() => setShowVolunteerSignIn(false)}

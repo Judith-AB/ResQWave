@@ -1,27 +1,51 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext();
-
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    // Restore login state from localStorage
-    return localStorage.getItem("resqwave.isAdmin") === "true";
-  });
+
+  const [adminLoggedIn, setAdminLoggedIn] = useState(
+    () => localStorage.getItem("resqwave.isAdmin") === "true"
+  );
+
+  
+  const [volunteer, setVolunteer] = useState(
+    () => JSON.parse(localStorage.getItem("volunteer")) || null
+  );
 
   const loginAdmin = () => {
-    setIsAdminAuthenticated(true);
-    localStorage.setItem("resqwave.isAdmin", "true"); // persist login
+    setAdminLoggedIn(true);
+    localStorage.setItem("resqwave.isAdmin", "true");
   };
 
   const logoutAdmin = () => {
-    setIsAdminAuthenticated(false);
-    localStorage.setItem("resqwave.isAdmin", "false"); // persist logout
+    setAdminLoggedIn(false);
+    localStorage.removeItem("resqwave.isAdmin");
   };
 
+  const loginVolunteer = (data) => {
+    setVolunteer(data);
+    localStorage.setItem("volunteer", JSON.stringify(data));
+  };
+
+  const logoutVolunteer = () => {
+    setVolunteer(null);
+    localStorage.removeItem("volunteer");
+  };
+
+
   return (
-    <AuthContext.Provider value={{ isAdminAuthenticated, loginAdmin, logoutAdmin }}>
+    <AuthContext.Provider
+      value={{
+        adminLoggedIn,      // Admin status
+        volunteer,          // Volunteer data
+        loginAdmin,
+        logoutAdmin,
+        loginVolunteer,
+        logoutVolunteer,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

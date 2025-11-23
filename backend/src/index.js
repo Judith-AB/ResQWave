@@ -39,6 +39,7 @@ app.use(cors({
 app.use(express.json());
 
 // Add static path to serve uploaded files for admin review
+// This correctly points to /backend/uploads/proofs
 app.use('/uploads/proofs', express.static(path.join(__dirname, '..', 'uploads', 'proofs')));
 
 
@@ -56,15 +57,10 @@ app.get('/api/test', (req, res) => {
 setupSocketHandlers(io);
 
 // ----------------------------------------------------
-// 🚨 CRITICAL FIX: The listener MUST be here to keep the process alive
-// We must also EXPORT the server and io for use by other modules (like assignments.js)
-export { server, io }; // ⬅️ Keep the exports for modularity (used by routes/assignments.js)
+export { server, io };
 
 // START LISTENING (This keeps the process active)
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   console.log(`Frontend can connect to: ${FRONTEND_URL}`);
 });
-
-// NOTE: We REMOVE `export default server;` from the end to avoid confusion
-// since the named export `export { server, io };` is cleaner for modular routing.

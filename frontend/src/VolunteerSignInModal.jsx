@@ -9,18 +9,18 @@ const Eye = () => <span>👁️</span>;
 const VolunteerSignInModal = ({ onClose, onSuccess }) => {
     const [credentials, setCredentials] = useState({ username: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState(null);
+    const [responseError, setResponseError] = useState(null);
     const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         setCredentials({ ...credentials, [e.target.name]: e.target.value });
-        setError(null);
+        setResponseError(null);
     };
 
     const handleSignIn = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setError(null);
+        setResponseError(null);
 
         try {
             const response = await fetch(`${API_BASE_URL}/login`, {
@@ -30,13 +30,28 @@ const VolunteerSignInModal = ({ onClose, onSuccess }) => {
             });
             const data = await response.json();
 
-            if (response.ok && data.isVolunteer && data.role !== 'admin') {
-                onSuccess(data);
+            if (response.ok) {
+
+                if (data.role === 'volunteer') {
+
+                    const { passwordHash, role, message, ...userData } = data;
+                    onClose();
+                    onSuccess(userData);
+
+                } else if (data.role === 'admin') {
+                    setResponseError("This account is for administrative access only.");
+
+                } else {
+                  
+                    setResponseError(data.message || "Login failed due to unexpected role.");
+                }
+
             } else {
-                setError(data.message || "Sign In failed. Check credentials or ensure you registered as a volunteer.");
+      
+                setResponseError(data.message || "Sign In failed. Check credentials or approval status.");
             }
         } catch (err) {
-            setError("Network error. Ensure the backend server is running.");
+            setResponseError("Network error. Ensure the backend server is running.");
         } finally {
             setLoading(false);
         }
@@ -52,19 +67,19 @@ const VolunteerSignInModal = ({ onClose, onSuccess }) => {
 
                 <form onSubmit={handleSignIn}>
 
-                    {error && (
+                    {responseError && (
                         <div style={{
                             color: 'white',
-                            background: '#f44336',
+                            background: '#e53935',
                             padding: '10px',
                             borderRadius: '8px',
-                            marginBottom: '10px'
+                            marginBottom: '10px',
+                            fontWeight: 'bold'
                         }}>
-                            {error}
+                            {responseError}
                         </div>
                     )}
 
-                    {/* Username */}
                     <label>
                         Username:
                         <input
@@ -76,7 +91,7 @@ const VolunteerSignInModal = ({ onClose, onSuccess }) => {
                         />
                     </label>
 
-                    
+
                     <label>
                         Password:
                         <div style={{ position: "relative" }}>
@@ -108,7 +123,7 @@ const VolunteerSignInModal = ({ onClose, onSuccess }) => {
                         </div>
                     </label>
 
-                    {/* Actions */}
+                   
                     <div className="form-actions"
                         style={{ justifyContent: 'center', gap: '1rem', marginTop: '1.5rem' }}
                     >
@@ -116,7 +131,8 @@ const VolunteerSignInModal = ({ onClose, onSuccess }) => {
                             type="submit"
                             className="btn-primary"
                             disabled={loading}
-                            style={{ flex: 1, background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
+                        
+                            style={{ flex: 1, background: 'linear-gradient(135deg, #4CAF50, #388E3C)' }}
                         >
                             {loading ? 'Signing In...' : 'Sign In'}
                         </button>
@@ -126,7 +142,7 @@ const VolunteerSignInModal = ({ onClose, onSuccess }) => {
                             className="btn-secondary"
                             onClick={onClose}
                             disabled={loading}
-                            style={{ flex: 1 }}
+                            style={{ flex: 1, background: '#e53935', color: 'white' }}
                         >
                             Close
                         </button>
