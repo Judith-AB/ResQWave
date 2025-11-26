@@ -120,8 +120,7 @@ const VictimStatusChat = ({ request, onClose }) => {
                     <h3 style={{ margin: 0, fontSize: "1.2rem" }}>
                         {request.assignedVolunteerId
                             ? `Matched with ${volunteerName}`
-                            : `🚨 Request ID: ${request.id} Pending... (Score: ${request.urgencyScore?.toFixed(2) || "?"
-                            })`}
+                            : `🚨 Request ID: ${request.id} Pending... `}
                     </h3>
 
                     <button

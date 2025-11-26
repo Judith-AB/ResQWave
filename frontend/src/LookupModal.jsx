@@ -87,7 +87,7 @@ const LookupModal = ({ onClose }) => {
                         required
                     />
 
-                    <label>Location (optional):</label>
+                    <label>Location :</label>
                     <input
                         type="text"
                         name="location"

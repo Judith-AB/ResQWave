@@ -124,18 +124,51 @@ const LandingPage = () => {
           <div className="nav-buttons">
             <button
               className="btn-volunteer-portal"
-              onClick={() => setShowVolunteerChooser(true)}
-
+              onClick={() => {
+                // Ensure only volunteer-related modals are open
+                setShowAdminForm(false);
+                setShowVolunteerSignIn(false);
+                setShowVolunteerForm(false);
+                setShowLookupModal(false);
+                setShowHelpForm(false);
+                setShowVolunteerChooser(true);
+              }}
             >
               Volunteer Portal
             </button>
-            {/* Admin button reverts to showing local modal */}
-            <button className="btn-dashboard" onClick={() => setShowAdminForm(true)}>Admin Dashboard</button>
+            {/* Admin button opens admin modal and closes any volunteer modal */}
+            <button
+              className="btn-dashboard"
+              onClick={() => {
+                setShowVolunteerChooser(false);
+                setShowVolunteerSignIn(false);
+                setShowVolunteerForm(false);
+                setShowLookupModal(false);
+                setShowHelpForm(false);
+                setShowAdminForm(true);
+              }}
+            >
+              Admin Dashboard
+            </button>
             <button
               className="btn-resume-help"
-              onClick={() => setShowLookupModal(true)}>Resume Help
+              onClick={() => {
+                setShowAdminForm(false);
+                setShowVolunteerChooser(false);
+                setShowVolunteerSignIn(false);
+                setShowVolunteerForm(false);
+                setShowHelpForm(false);
+                setShowLookupModal(true);
+              }}>Resume Help
             </button>
-            <button className="btn-help" onClick={() => setShowHelpForm(true)}>Get Help Now</button>
+            <button className="btn-help" onClick={() => {
+              setShowAdminForm(false);
+              setShowVolunteerChooser(false);
+              setShowVolunteerSignIn(false);
+              setShowVolunteerForm(false);
+              setShowLookupModal(false);
+              setShowHelpForm(true);
+            }}>Get Help Now</button>
           </div>
         </nav>
       </header>
@@ -151,8 +184,22 @@ const LandingPage = () => {
               This student project connects people in need with volunteers quickly, helping to provide support and assistance during emergency situations.
             </p>
             <div className="hero-buttons">
-              <button className="btn-primary" onClick={() => setShowHelpForm(true)}>❤️ Request Help</button>
-              <button className="btn-secondary" onClick={() => setShowVolunteerForm(true)}>
+              <button className="btn-primary" onClick={() => {
+                setShowAdminForm(false);
+                setShowVolunteerChooser(false);
+                setShowVolunteerSignIn(false);
+                setShowVolunteerForm(false);
+                setShowLookupModal(false);
+                setShowHelpForm(true);
+              }}>❤️ Request Help</button>
+              <button className="btn-secondary" onClick={() => {
+                setShowAdminForm(false);
+                setShowVolunteerChooser(false);
+                setShowVolunteerSignIn(false);
+                setShowLookupModal(false);
+                setShowHelpForm(false);
+                setShowVolunteerForm(true);
+              }}>
                 🤝 Join as Volunteer
               </button>
             </div>
@@ -229,7 +276,14 @@ const LandingPage = () => {
             <ul className="footer-links">
               <li><button onClick={() => scrollToSection("about")}>About</button></li>
               <li><button onClick={() => scrollToSection("how-it-works")}>How It Works</button></li>
-              <li><button onClick={() => setShowVolunteerForm(true)}>Volunteer</button></li>
+              <li><button onClick={() => {
+                setShowAdminForm(false);
+                setShowVolunteerChooser(false);
+                setShowVolunteerSignIn(false);
+                setShowLookupModal(false);
+                setShowHelpForm(false);
+                setShowVolunteerForm(true);
+              }}>Volunteer</button></li>
             </ul>
           </div>
           <div className="footer-section">
@@ -251,8 +305,21 @@ const LandingPage = () => {
       {showVolunteerChooser && (
         <VolunteerChooser
           onClose={() => setShowVolunteerChooser(false)}
-          openSignIn={() => { setShowVolunteerChooser(false); setShowVolunteerSignIn(true); }}
-          openSignUp={() => { setShowVolunteerChooser(false); setShowVolunteerForm(true); }}
+          openSignIn={() => {
+            // Close any admin modal when switching to volunteer sign-in
+            setShowAdminForm(false);
+            setShowVolunteerChooser(false);
+            setShowLookupModal(false);
+            setShowHelpForm(false);
+            setShowVolunteerSignIn(true);
+          }}
+          openSignUp={() => {
+            setShowVolunteerChooser(false);
+            setShowAdminForm(false);
+            setShowLookupModal(false);
+            setShowHelpForm(false);
+            setShowVolunteerForm(true);
+          }}
         />
       )}
 
