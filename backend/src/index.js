@@ -1,4 +1,4 @@
-// --- backend/src/index.js (FINAL CORRECTED CODE) ---
+// backend/src/index.js 
 
 import 'dotenv/config';
 import express from 'express';
@@ -15,12 +15,12 @@ import assignmentRoutes from '../routes/assignments.js';
 
 const app = express();
 const FRONTEND_URL = "http://localhost:5173";
-const PORT = process.env.PORT || 3001; // Defined PORT
+const PORT = process.env.PORT || 3001; 
 
-// 1. HTTP Server Setup
+// HTTP Server Setup
 const server = http.createServer(app);
 
-// 2. WebSocket Server Setup
+// WebSocket Server Setup
 const io = new Server(server, {
   cors: {
     origin: FRONTEND_URL,
@@ -32,18 +32,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-// 3. Express Middleware
+// Express Middleware
 app.use(cors({
   origin: FRONTEND_URL
 }));
 app.use(express.json());
 
-// Add static path to serve uploaded files for admin review
-// This correctly points to /backend/uploads/proofs
+
 app.use('/uploads/proofs', express.static(path.join(__dirname, '..', 'uploads', 'proofs')));
 
 
-// 4. Express Routes
+// Express Routes
 app.use('/api/auth', authRoutes.default || authRoutes);
 app.use('/api/requests', requestRoutes.default || requestRoutes);
 app.use('/api/assignments', assignmentRoutes.default || assignmentRoutes);
@@ -53,13 +52,10 @@ app.get('/api/test', (req, res) => {
 });
 
 
-// 5. Initialize Socket Handlers
 setupSocketHandlers(io);
 
-// ----------------------------------------------------
 export { server, io };
 
-// START LISTENING (This keeps the process active)
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   console.log(`Frontend can connect to: ${FRONTEND_URL}`);

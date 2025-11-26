@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 import "./index.css";
 import { useRequests } from "./context/RequestsContext";
 import { useChat } from "./context/ChatContext";
-// 🛑 FIX 1: We no longer need the useVolunteers import, as it caused the crash.
-// import { useVolunteers } from "./context/VolunteerContext"; 
+
 import io from "socket.io-client";
 import ConflictModal from "./ConflictModal";
 
@@ -13,13 +12,10 @@ const SOCKET_SERVER_URL = "http://localhost:3001";
 
 const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
 
-/* =======================================================================
-   VictimStatusChat  (RESUME HELP FIX)
-======================================================================= */
+
 const VictimStatusChat = ({ request, onClose }) => {
     const { getMessages, addMessage } = useChat();
-    // 🛑 FIX 2: Removed the line below which caused the "undefined.find" error:
-    // const { volunteers } = useVolunteers(); 
+ 
     const { updateRequestStatus } = useRequests();
 
     const [inputText, setInputText] = useState("");
@@ -29,7 +25,7 @@ const VictimStatusChat = ({ request, onClose }) => {
     const messages = getMessages(request.id);
     const reqIdStr = String(request.id);
 
-    // ✅ FIX 3: Simplify volunteer name lookup using data provided by the LookupModal
+
     const volunteerName =
         request.assignedVolunteerName || "A Volunteer";
 
@@ -76,7 +72,6 @@ const VictimStatusChat = ({ request, onClose }) => {
         setInputText("");
     };
 
-    /* ---------------- Raise Conflict ---------------- */
     const handleConflictSubmit = (reason) => {
         socket.emit("raise_conflict", {
             requestId: reqIdStr,
@@ -88,7 +83,6 @@ const VictimStatusChat = ({ request, onClose }) => {
         alert("Conflict reported. Admin will intervene.");
     };
 
-    /* ---------------- Mark as Solved ---------------- */
     const handleMarkSolved = () => {
         if (window.confirm("Are you sure the issue is resolved?")) {
             setIsSolvedConfirmed(true);
@@ -99,7 +93,6 @@ const VictimStatusChat = ({ request, onClose }) => {
         }
     };
 
-    /* ---------------- UI ---------------- */
     return (
         <div className="form-overlay" style={{ background: "rgba(0,0,0,0.6)" }}>
             <div
@@ -137,7 +130,6 @@ const VictimStatusChat = ({ request, onClose }) => {
                     </button>
                 </div>
 
-                {/* Info */}
                 <div style={{ padding: "1rem", borderBottom: "1px solid #ccc" }}>
                     <p>
                         Location: {request.location} | Type: {request.emergencyType}
@@ -153,7 +145,6 @@ const VictimStatusChat = ({ request, onClose }) => {
                     )}
                 </div>
 
-                {/* Chat History */}
                 <div
                     style={{
                         height: "250px",
@@ -243,7 +234,6 @@ const VictimStatusChat = ({ request, onClose }) => {
                     </button>
                 </div>
 
-                {/* Input */}
                 <form
                     onSubmit={handleSend}
                     style={{

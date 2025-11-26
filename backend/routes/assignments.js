@@ -264,17 +264,15 @@ router.get('/available-tasks/:volunteerId', async (req, res) => {
       where: {
         status: { in: ['Pending', 'Assigned', 'Conflict'] },
 
-        // 🔥 FIX 2: Add a NOT filter to exclude tasks that THIS volunteer has declined
         NOT: {
           assignments: {
             some: {
               volunteerId: volunteerId,
-              declineCount: { gt: 0 } // Exclude if this volunteer has any recorded decline count
+              declineCount: { gt: 0 } 
             }
           }
         },
 
-        // Keep existing logic for tasks the volunteer is assigned to or in conflict with
         OR: [
           { status: 'Pending' },
           { status: 'Assigned', assignments: { some: { volunteerId } } },
@@ -292,7 +290,6 @@ router.get('/available-tasks/:volunteerId', async (req, res) => {
     });
 
     const filtered = requests.filter(r => {
-      // Only filter out medical requests if the volunteer is NOT medically verified
       if ((r.emergencyType || '').toLowerCase() === "medical" && !isMedical) return false;
       return true;
     });

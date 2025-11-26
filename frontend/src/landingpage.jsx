@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Essential for Admin button
+import { useNavigate } from "react-router-dom"; 
 import HelpRequestForm from "./HelpRequestForm";
 import VolunteerForm from "./VolunteerForm";
 import AdminSignInForm from "./AdminSignInForm";
@@ -8,7 +8,7 @@ import VolunteerSignInModal from "./VolunteerSignInModal";
 import LookupModal from "./LookupModal";
 
 import "./index.css";
-import { useVolunteers } from "./context/VolunteerContext"; // For global login handling
+import { useVolunteers } from "./context/VolunteerContext"; 
 import { useRequests } from "./context/RequestsContext";
 
 
@@ -48,16 +48,16 @@ const VolunteerChooser = ({ onClose, openSignIn, openSignUp }) => (
 const LandingPage = () => {
 
   const [showHelpForm, setShowHelpForm] = useState(false);
-  const [showVolunteerForm, setShowVolunteerForm] = useState(false); // Signup
-  const [showAdminForm, setShowAdminForm] = useState(false); // Modal state for admin login
+  const [showVolunteerForm, setShowVolunteerForm] = useState(false); 
+  const [showAdminForm, setShowAdminForm] = useState(false); 
   const [showVolunteerChooser, setShowVolunteerChooser] = useState(false);
   const [showVolunteerSignIn, setShowVolunteerSignIn] = useState(false);
-  const [volunteerUser, setVolunteerUser] = useState(null); // Local state for immediate rendering (can be simplified later)
+  const [volunteerUser, setVolunteerUser] = useState(null); 
   const [showLookupModal, setShowLookupModal] = useState(false);
 
-  // Hooks
+ 
   const navigate = useNavigate();
-  const { loginVolunteer } = useVolunteers(); // 🔥 FIX: Get global login function
+  const { loginVolunteer } = useVolunteers(); 
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -88,11 +88,11 @@ const LandingPage = () => {
   }, []);
 
 
-  // 🔥 FIX: Pushes the user data to the global context for persistence and dashboard rendering
+ 
   const handleVolunteerSuccess = (userData) => {
     if (userData && userData.id) {
-      loginVolunteer(userData); // Push to global context (AuthContext via VolunteerContext)
-      setVolunteerUser(userData); // Keep local state for immediate re-render compatibility
+      loginVolunteer(userData); 
+      setVolunteerUser(userData); 
       setShowVolunteerSignIn(false);
     }
   };
@@ -125,7 +125,6 @@ const LandingPage = () => {
             <button
               className="btn-volunteer-portal"
               onClick={() => {
-                // Ensure only volunteer-related modals are open
                 setShowAdminForm(false);
                 setShowVolunteerSignIn(false);
                 setShowVolunteerForm(false);
@@ -306,7 +305,6 @@ const LandingPage = () => {
         <VolunteerChooser
           onClose={() => setShowVolunteerChooser(false)}
           openSignIn={() => {
-            // Close any admin modal when switching to volunteer sign-in
             setShowAdminForm(false);
             setShowVolunteerChooser(false);
             setShowLookupModal(false);

@@ -10,7 +10,7 @@ const VolunteerForm = ({ onClose }) => {
     fullName: "",
     contact: "",
     location: "",
-    skills: "", // now used as volunteer type
+    skills: "", 
     username: "",
     password: "",
     isMedicalCertified: false,
@@ -36,9 +36,6 @@ const VolunteerForm = ({ onClose }) => {
     setError("");
   };
 
-  // ===============================
-  // VALIDATION
-  // ===============================
   const validateForm = () => {
     if (!formData.fullName.trim()) return "Full Name is required.";
     if (!/^[A-Za-z\s]+$/.test(formData.fullName))
@@ -65,9 +62,7 @@ const VolunteerForm = ({ onClose }) => {
     return null;
   };
 
-  // ===============================
-  // SUBMIT FORM
-  // ===============================
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -81,13 +76,11 @@ const VolunteerForm = ({ onClose }) => {
       return;
     }
 
-    // Prepare FormData
     const form = new FormData();
     form.append("fullName", formData.fullName);
     form.append("contact", formData.contact);
     form.append("location", formData.location);
 
-    // "skills" now stores volunteer type
     form.append("skills", formData.skills);
 
     form.append("username", formData.username);

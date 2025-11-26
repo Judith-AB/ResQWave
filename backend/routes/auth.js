@@ -1,4 +1,3 @@
-// --- backend/routes/auth.js (FINAL SECURE AND FUNCTIONAL VERSION) ---
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../src/client.js';
@@ -22,7 +21,7 @@ const createUploadsDirectory = async () => {
         console.error("Failed to create upload directory:", e);
     }
 };
-createUploadsDirectory(); // CALL IT IMMEDIATELY
+createUploadsDirectory(); 
 
 
 const storage = multer.diskStorage({
@@ -67,7 +66,7 @@ router.post('/signup', upload.single('medicalProof'), async (req, res) => {
                 skills: skills || null,
                 isVolunteer: true,
                 isApproved: false,
-                isMedicalVerified: false, // Default to FALSE, relies on Admin verification
+                isMedicalVerified: false, 
                 status: "Available"
             }
         });
@@ -119,7 +118,7 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) return res.status(401).json({ message: "Invalid username or password." });
 
-        // Volunteer Approval Gate
+  
         if (user.isVolunteer && !user.isApproved) {
             return res.status(403).json({ message: "Your account is pending admin approval." });
         }
@@ -181,7 +180,7 @@ router.put('/verify-medical/:userId', async (req, res) => {
 
         await prisma.proof.updateMany({
             where: { userId },
-            data: { isVerified: true } // Mark the proof itself as verified
+            data: { isVerified: true } 
         });
 
         res.json({ message: "Medical proof verified!" });

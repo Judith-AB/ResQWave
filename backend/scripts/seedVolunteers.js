@@ -1,15 +1,12 @@
-// --- backend/scripts/seedVolunteers.js ---
 import prisma from '../src/client.js';
 import bcrypt from 'bcryptjs';
 
 const seedVolunteers = async () => {
     console.log("Starting volunteer seeding...");
 
-    // Password hash for all dummy accounts (Password: password123)
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash('password123', salt); 
     
-    // Define the dummy data (9 entries)
     const volunteersData = [
        
         { 
@@ -19,11 +16,11 @@ const seedVolunteers = async () => {
             location: "Kochi, Ernakulam", 
             skills: "Triage, Advanced First Aid", 
             isVolunteer: true, 
-            isMedicalVerified: false, // Set to false so Admin has to verify
+            isMedicalVerified: false,
             status: 'Available',
             contact: "9847123456" 
         },
-        // 3. Medical Verified & PENDING REVIEW
+     
         { 
             fullName: "Dr. Riju Thomas", 
             username: "riju_md", 
@@ -31,11 +28,11 @@ const seedVolunteers = async () => {
             location: "Malappuram", 
             skills: "Trauma Care, Field Surgery", 
             isVolunteer: true, 
-            isMedicalVerified: false, // Set to false so Admin has to verify
+            isMedicalVerified: false,
             status: 'Available',
             contact: "9746789012"
         },
-        // 4-7. General Available (Non-Medical)
+      
         { 
             fullName: "Santhosh Kumar", 
             username: "santhosh_k", 
@@ -80,7 +77,7 @@ const seedVolunteers = async () => {
             status: 'Available',
             contact: "9946554433"
         },
-        // 8-10. Test Busy/Extra Users
+    
         { 
             fullName: "Rajeshwari P.", 
             username: "rajeshwari_p", 
@@ -125,18 +122,18 @@ const seedVolunteers = async () => {
                 create: vol,
             });
             
-            console.log(`✅ User ensured: ${newUser.fullName} (ID: ${newUser.id})`);
+            console.log(` User ensured: ${newUser.fullName} (ID: ${newUser.id})`);
 
 
             if (vol.isMedicalVerified) {
                  await prisma.proof.upsert({
                     where: { userId: newUser.id },
-                    update: { isVerified: false }, // Always set to false if running seed again
+                    update: { isVerified: false }, 
                     create: {
                         userId: newUser.id,
                         
                         proofUrl: `/uploads/proofs/${vol.username}_cert.pdf`, 
-                        isVerified: false, // CRITICAL: Must be false to appear in Admin review queue
+                        isVerified: false, 
                     }
                 });
                 console.log(`   * Proof record created/reset for ${vol.fullName} (PENDING REVIEW)`);

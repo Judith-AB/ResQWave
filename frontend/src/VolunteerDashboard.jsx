@@ -1,10 +1,10 @@
-// --- frontend/VolunteerDashboard.jsx (FINAL STABLE VERSION) ---
+
 import React, { useEffect, useState } from "react";
 import "./index.css";
-import ChatBox from './ChatBox';
+import ChatBox from './Chatbox';
 import io from 'socket.io-client';
 import { useVolunteers } from "./context/VolunteerContext";
-// Removed: import { useNavigate } from "react-router-dom"; 
+
 
 const ASSIGNMENT_API_URL = "http://localhost:3001/api/assignments";
 const SOCKET_SERVER_URL = "http://localhost:3001";
@@ -36,23 +36,21 @@ const getUrgencyStyle = (score) => {
 
 const VolunteerDashboard = () => {
 
-  // 1. ALL HOOKS AT THE TOP, UNCONDITIONALLY
+
   const { volunteerInfo, logoutVolunteer } = useVolunteers();
   const [requests, setRequests] = useState([]);
   const [myActiveAssignment, setMyActiveAssignment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeChatRequest, setActiveChatRequest] = useState(null);
 
-  // 2. DERIVE VARIABLES SAFELY 
-  const user = volunteerInfo;
-  const volunteerId = user?.id; // CRITICAL FIX: Use optional chaining for safety
 
-  // 3. CRITICAL RENDER GUARD (This must be the only conditional return)
+  const user = volunteerInfo;
+  const volunteerId = user?.id; 
+
   if (!volunteerInfo || !volunteerInfo.id) {
-    return null; // Render nothing if unauthenticated, letting the Router handle the redirect.
+    return null; 
   }
 
-  // 4. DATA FETCHING FUNCTIONS 
   const fetchData = () => {
     setLoading(true);
     fetch(`${ASSIGNMENT_API_URL}/available-tasks/${volunteerId}`)
@@ -80,7 +78,6 @@ const VolunteerDashboard = () => {
     fetchActiveAssignment();
   };
 
-  // 5. USE EFFECT 
   useEffect(() => {
     if (volunteerId) {
       fetchData();
@@ -152,10 +149,8 @@ const VolunteerDashboard = () => {
         } else {
           alert("Declined — request returned to queue.");
         }
-        // FIX for task list refresh after decline
         fetchData();
         fetchActiveAssignment();
-        // End fix
       } else {
         alert(data.message || "Decline failed.");
       }
@@ -174,15 +169,12 @@ const VolunteerDashboard = () => {
 
   const handleLogout = () => {
     logoutVolunteer();
-    // 🔥 FINAL FAILSAFE: Use window.location.href to force hard redirect to Landing Page
     window.location.href = "/";
   };
 
-  // TOP NAVBAR
   return (
     <div style={{ minHeight: '100vh', background: '#f6f8fb', fontFamily: "Segoe UI" }}>
 
-      {/* HEADER */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',

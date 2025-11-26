@@ -145,10 +145,8 @@ const AdminDashboard = () => {
 
       if (res.ok) {
         alert("Volunteer rejected & deleted.");
-        // 🔥 FINAL FIX: Re-fetch data to update all three lists (requests, approved volunteers, pending volunteers)
         fetchData();
       } else {
-        // Log the failure message if the server fails to delete the user
         const errorData = await res.json();
         alert(`Failed to reject volunteer: ${errorData.message || 'Server error.'}`);
       }
@@ -242,7 +240,6 @@ const AdminDashboard = () => {
         </button>
       </div>
 
-      {/* ------------------ REQUESTS TAB ------------------ */}
       {activeTab === "requests" && (
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {requests.length === 0 && <p style={{ opacity: 0.6, padding: 20 }}>No active requests.</p>}

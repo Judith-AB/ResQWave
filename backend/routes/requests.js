@@ -1,4 +1,3 @@
-// --- backend/routes/requests.js (FINAL CORRECTED VERSION) ---
 import express from 'express';
 import prisma from "../src/client.js";
 
@@ -7,7 +6,6 @@ import 'dotenv/config';
 
 const router = express.Router();
 
-/* ---------------- GROQ CONFIG ---------------- */
 const getGroqClient = () => {
   if (!process.env.GROQ_API_KEY) {
     console.warn("GROQ_API_KEY missing; using fallback scoring.");
@@ -17,7 +15,6 @@ const getGroqClient = () => {
 };
 const groq = getGroqClient();
 
-/* ---------------- URGENCY SCORE ---------------- */
 const originalCalculateUrgencyScore = (type) => {
   const map = {
     medical: 9.5, rescue: 9.5, shelter: 7.0, transportation: 7.0,
@@ -48,7 +45,6 @@ const calculateUrgencyScore = async (type, details) => {
   }
 };
 
-/* ---------------- CREATE REQUEST ---------------- */
 router.post('/', async (req, res) => {
   const { victimName, contact, location, emergencyType, details } = req.body;
 
@@ -76,18 +72,16 @@ router.post('/', async (req, res) => {
   }
 });
 
-/* ---------------- PENDING REQUESTS (ADMIN) ---------------- */
 router.get('/pending', async (req, res) => {
   try {
     const volunteers = await prisma.user.findMany({
       where: {
         isVolunteer: true,
-        isApproved: true, // ONLY APPROVED volunteers
+        isApproved: true, 
       },
       include: { proofs: true }
     });
 
-    // Remove unreliable 'Dr' check. Rely ONLY on the DB flag.
     const enrichedVolunteers = volunteers.map(v => ({
       ...v,
       isMedicalVerified: v.isMedicalVerified
