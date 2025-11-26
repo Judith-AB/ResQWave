@@ -44,13 +44,11 @@ router.post('/signup', upload.single('medicalProof'), async (req, res) => {
     const proofPath = proofFile ? `/uploads/proofs/${proofFile.filename}` : null;
     const certified = isMedicalCertified === 'true';
 
-    // Cleanup file if required fields are missing
     if (!username || !password || !fullName) {
         if (proofFile) await fs.unlink(proofFile.path);
         return res.status(400).json({ message: "Missing required fields." });
     }
 
-    // Enforce proof upload if certified
     if (certified && !proofPath) {
         return res.status(400).json({ message: "Medical proof required." });
     }
@@ -141,9 +139,6 @@ router.post('/login', async (req, res) => {
 });
 
 
-// ------------------------------------------------------------------
-// 3️⃣ FETCH PENDING VOLUNTEERS (Admin)
-// ------------------------------------------------------------------
 router.get('/pending-volunteers', async (req, res) => {
     try {
         const pending = await prisma.user.findMany({
@@ -158,14 +153,10 @@ router.get('/pending-volunteers', async (req, res) => {
 });
 
 
-// ------------------------------------------------------------------
-// 4️⃣ APPROVE VOLUNTEER (Admin) - Grants Portal Access
-// ------------------------------------------------------------------
 router.put('/approve-volunteer/:userId', async (req, res) => {
     const userId = parseInt(req.params.userId);
 
     try {
-        // FIX: Only update the approval status. Do NOT auto-verify medical status.
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: { isApproved: true }
