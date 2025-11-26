@@ -9,13 +9,11 @@ import fs from 'fs/promises';
 
 const router = express.Router();
 
-// Setup file path helpers
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// CORRECT PATH: Step up one level from 'routes' and find 'uploads/proofs'
 const UPLOADS_PATH = path.join(__dirname, '../uploads/proofs');
 
-// FIX: Function to ensure the Multer target directory exists
+
 const createUploadsDirectory = async () => {
     try {
         await fs.mkdir(UPLOADS_PATH, { recursive: true });
@@ -26,9 +24,7 @@ const createUploadsDirectory = async () => {
 };
 createUploadsDirectory(); // CALL IT IMMEDIATELY
 
-// ------------------------------------------------------------------
-// MULTER STORAGE FOR MEDICAL PDF UPLOAD
-// ------------------------------------------------------------------
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, UPLOADS_PATH);
@@ -39,10 +35,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-
-// ------------------------------------------------------------------
-// 1️⃣ VOLUNTEER SIGNUP
-// ------------------------------------------------------------------
 router.post('/signup', upload.single('medicalProof'), async (req, res) => {
     const {
         fullName, contact, location, username, password, isMedicalCertified, skills
@@ -111,9 +103,7 @@ router.post('/signup', upload.single('medicalProof'), async (req, res) => {
 });
 
 
-// ------------------------------------------------------------------
-// 2️⃣ LOGIN
-// ------------------------------------------------------------------
+
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
@@ -189,10 +179,6 @@ router.put('/approve-volunteer/:userId', async (req, res) => {
     }
 });
 
-
-// ------------------------------------------------------------------
-// 5️⃣ MANUAL MEDICAL VERIFICATION (Admin) - Grants Medical Eligibility
-// ------------------------------------------------------------------
 router.put('/verify-medical/:userId', async (req, res) => {
     const userId = parseInt(req.params.userId);
 
@@ -212,6 +198,26 @@ router.put('/verify-medical/:userId', async (req, res) => {
     } catch (error) {
         console.error("Medical Proof Verification Error:", error);
         res.status(500).json({ message: "Failed to verify medical proof." });
+    }
+});
+router.delete("/reject-volunteer/:id", async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+
+        await prisma.proof.deleteMany({ where: { userId: id } });
+
+        await prisma.user.delete({ where: { id } });
+
+        return res.json({ message: "Volunteer rejected & removed." });
+
+    } catch (err) {
+        console.error("Reject Volunteer Error:", err);
+        
+        if (err.code === 'P2025') {
+            return res.status(404).json({ message: "Volunteer not found." });
+        }
+        
+        return res.status(500).json({ message: "Failed to reject volunteer." });
     }
 });
 

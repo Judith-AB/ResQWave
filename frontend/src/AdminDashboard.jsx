@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "./context/AuthContext";
-import ChatBox from "./ChatBox";
+import ChatBox from "./Chatbox";
 import io from "socket.io-client";
 import "./index.css";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 
 const REQUEST_API_URL = "http://localhost:3001/api/requests";
 const ASSIGNMENT_API_URL = "http://localhost:3001/api/assignments";
@@ -50,7 +50,7 @@ const StatCard = ({ title, value, color }) => (
 
 const AdminDashboard = () => {
   const { logoutAdmin } = useAuth();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   const [requests, setRequests] = useState([]);
   const [volunteers, setVolunteers] = useState([]);
@@ -63,7 +63,7 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-     
+
       const res = await fetch(`${REQUEST_API_URL}/pending`);
       const data = await res.json();
       if (res.ok) {
@@ -71,7 +71,7 @@ const AdminDashboard = () => {
         setVolunteers(data.volunteers || []);
       }
 
-     
+
       const pv = await fetch(`${API_AUTH_URL}/pending-volunteers`);
       const pvData = await pv.json();
       setPendingVolunteers(pvData.pending || []);
@@ -138,18 +138,30 @@ const AdminDashboard = () => {
   const handleRejectVolunteer = async (userId) => {
     if (!window.confirm("Reject and delete this volunteer?")) return;
 
-    await fetch(`${API_AUTH_URL}/reject-volunteer/${userId}`, {
-      method: "DELETE",
-    });
+    try {
+      const res = await fetch(`${API_AUTH_URL}/reject-volunteer/${userId}`, {
+        method: "DELETE",
+      });
 
-    alert("Volunteer rejected & deleted.");
-    fetchData();
-  };
+      if (res.ok) {
+        alert("Volunteer rejected & deleted.");
+        // 🔥 FINAL FIX: Re-fetch data to update all three lists (requests, approved volunteers, pending volunteers)
+        fetchData();
+      } else {
+        // Log the failure message if the server fails to delete the user
+        const errorData = await res.json();
+        alert(`Failed to reject volunteer: ${errorData.message || 'Server error.'}`);
+      }
+    } catch (err) {
+      console.error("Reject Volunteer Network Error:", err);
+      alert("Network error while attempting to reject volunteer.");
+    }
+  }
 
   const handleLogout = () => {
-    logoutAdmin(); 
+    logoutAdmin();
 
-    
+
     window.location.href = "/";
   };
   if (loading)
@@ -182,7 +194,7 @@ const AdminDashboard = () => {
         <h1>Coordination Dashboard</h1>
 
         <button
-          onClick={handleLogout} 
+          onClick={handleLogout}
           style={{
             background: "none",
             border: "none",
@@ -195,7 +207,7 @@ const AdminDashboard = () => {
         </button>
       </header>
 
-     
+
       <div
         style={{
           maxWidth: 1200,
@@ -240,7 +252,7 @@ const AdminDashboard = () => {
             const assignedName =
               assigned?.volunteer?.fullName || "Unassigned";
 
-            
+
             const candidates = volunteers.filter(
               (v) =>
                 ((req.emergencyType || '').toLowerCase() !== "medical" ||
@@ -335,7 +347,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-    
+
       {activeTab === "volunteers" && (
         <div style={gridContainer}>
           {volunteers.length === 0 && <p style={{ opacity: 0.6, padding: 20 }}>No approved volunteers available.</p>}
@@ -425,7 +437,7 @@ const VolunteerCard = ({ volunteer, handleVerify }) => {
 
 const NewVolunteerCard = ({ volunteer, approve, reject, verify }) => {
   const hasPdf = volunteer.proofs?.length > 0;
-  
+
   const needsVerify = hasPdf && !volunteer.isMedicalVerified;
 
   return (
@@ -440,9 +452,9 @@ const NewVolunteerCard = ({ volunteer, approve, reject, verify }) => {
         🛠️ Skills: <b>{volunteer.skills || 'General'}</b>
       </p>
 
-   
+
       <div style={actionRow}>
-   
+
         {hasPdf && (
           <a
             href={`http://localhost:3001${volunteer.proofs[0].proofUrl}`}
